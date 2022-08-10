@@ -169,7 +169,11 @@ One of the most complicated parts of programming is multiprocessing, be it with 
 
 ## Known bugs:
 
-Currently, there is one major bug, the **compiletime** checks only works with **chaining `with` till the `Coeffect` call**, that means that:
+Currently, there are two major bugs:
+
+### Saving `Coeffect.Carrier` as a variable
+
+The **compiletime** checks only works with **chaining `with` till the `Coeffect` call**, that means that:
 
 ```java
 var x = Coeffect.with(3);
@@ -222,6 +226,8 @@ We cannot dynamically bind objects to an effect, with generics we would "collect
 
 Because of that **the current implementation requires adding a context to the method that defines the lambda**.
 
+
+I am open for suggestions for better solutions.
 
 ---
 
