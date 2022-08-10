@@ -1,7 +1,7 @@
-package test.org.holo.coeffect.testdata;
+package test.io.github.holo314.coeffect.testdata;
 
-import org.holo.coeffect.compiletime.annotations.WithContext;
-import org.holo.coeffect.runtime.Coeffect;
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.runtime.Coeffect;
 
 public class Test {
     @WithContext({java.lang.String.class})

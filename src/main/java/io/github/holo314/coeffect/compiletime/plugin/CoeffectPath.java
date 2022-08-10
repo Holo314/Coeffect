@@ -1,4 +1,4 @@
-package org.holo.coeffect.compiletime.plugin;
+package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.common.collect.Sets;
 import com.google.errorprone.VisitorState;
@@ -9,8 +9,8 @@ import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeInfo;
-import org.holo.coeffect.compiletime.annotations.WithContext;
-import org.holo.coeffect.runtime.Coeffect;
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.runtime.Coeffect;
 
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.TypeMirror;
@@ -19,7 +19,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public record CoeffectPath(
         MethodInvocationTree methodInv,

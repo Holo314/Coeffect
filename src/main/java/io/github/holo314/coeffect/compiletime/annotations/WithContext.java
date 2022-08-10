@@ -1,4 +1,4 @@
-package org.holo.coeffect.compiletime.annotations;
+package io.github.holo314.coeffect.compiletime.annotations;
 
 import java.lang.annotation.*;
 

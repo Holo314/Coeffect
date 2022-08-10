@@ -1,9 +1,9 @@
-package test.org.holo.coeffect;
+package test.io.github.holo314.coeffect;
 
 import com.google.errorprone.CompilationTestHelper;
-import org.holo.coeffect.compiletime.annotations.WithContext;
-import org.holo.coeffect.compiletime.plugin.CoeffectPlugin;
-import org.holo.coeffect.runtime.Coeffect;
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.compiletime.plugin.CoeffectPlugin;
+import io.github.holo314.coeffect.runtime.Coeffect;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -14,7 +14,7 @@ public class ContextTest {
     @Test
     public void coeffect()
             throws IOException {
-        var source0 = "test/org/holo/coeffect/testdata/Test.java";
+        var source0 = "test/io/github/holo314/coeffect/testdata/Test.java";
 
         var compilationHelper = CompilationTestHelper.newInstance(CoeffectPlugin.class, getClass());
         // TODO: add actual tests instead of this show-case example

@@ -1,4 +1,4 @@
-package org.holo.coeffect.runtime;
+package io.github.holo314.coeffect.runtime;
 
 import jdk.incubator.concurrent.ExtentLocal;
 

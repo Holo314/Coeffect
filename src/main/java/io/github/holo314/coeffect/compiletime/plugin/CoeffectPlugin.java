@@ -1,4 +1,4 @@
-package org.holo.coeffect.compiletime.plugin;
+package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.errorprone.BugPattern;
 import com.google.errorprone.VisitorState;
@@ -6,7 +6,7 @@ import com.google.errorprone.bugpatterns.BugChecker;
 import com.google.errorprone.matchers.Description;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.tools.javac.model.JavacElements;
-import org.holo.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;

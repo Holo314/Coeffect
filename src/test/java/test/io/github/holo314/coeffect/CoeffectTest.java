@@ -1,8 +1,8 @@
-package test.org.holo.coeffect;
+package test.io.github.holo314.coeffect;
 
 import jdk.incubator.concurrent.StructuredTaskScope;
-import org.holo.coeffect.compiletime.annotations.WithContext;
-import org.holo.coeffect.runtime.Coeffect;
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.runtime.Coeffect;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
