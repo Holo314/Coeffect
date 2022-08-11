@@ -5,6 +5,8 @@ import com.google.errorprone.BugPattern;
 import com.google.errorprone.VisitorState;
 import com.google.errorprone.bugpatterns.BugChecker;
 import com.google.errorprone.matchers.Description;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.tools.javac.model.JavacElements;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
@@ -26,29 +28,28 @@ import java.util.Objects;
 )
 public class CoeffectPlugin
         extends BugChecker
-        implements BugChecker.MethodInvocationTreeMatcher {
-    public static Elements eltUtils;
-    public static TypeElement annotationElement;
+        implements BugChecker.MethodInvocationTreeMatcher, BugChecker.MemberReferenceTreeMatcher {
 
     @Override
     public Description matchMethodInvocation(MethodInvocationTree methodInv, VisitorState visitorState) {
-        eltUtils = JavacElements.instance(visitorState.context);
-        var annotation = WithContext.class;
-        var name = annotation.getCanonicalName();
-        annotationElement = eltUtils.getTypeElement(name);
-        if (annotationElement == null) {
-            var moduleName = Objects.requireNonNullElse(annotation.getModule().getName(), "");
-            annotationElement = eltUtils.getTypeElement(eltUtils.getModuleElement(moduleName), name);
-        }
+        var path = CoeffectPath.of(methodInv, visitorState);
+        return checkTree(path, methodInv, visitorState);
+    }
 
-        var p = CoeffectPath.of(methodInv, visitorState);
+    @Override
+    public Description matchMemberReference(MemberReferenceTree memberReferenceTree, VisitorState visitorState) {
+        var path = CoeffectPath.of(memberReferenceTree, visitorState);
+        return checkTree(path, memberReferenceTree, visitorState);
+    }
+
+    private Description checkTree(CoeffectPath path, ExpressionTree ExpressionTree, VisitorState visitorState) {
         try {
-            var r = p.getRequirements();
-            if (!r.isEmpty()) {
-                return describeMatch(methodInv);
+            var requirements = path.getRequirements();
+            if (!requirements.isEmpty()) {
+                return describeMatch(ExpressionTree);
             }
         } catch (IllegalStateException e) {
-            return describeMatch(methodInv);
+            return describeMatch(ExpressionTree);
         }
 
         return Description.NO_MATCH;

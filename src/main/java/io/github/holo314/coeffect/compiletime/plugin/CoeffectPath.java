@@ -2,6 +2,8 @@ package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.common.collect.Sets;
 import com.google.errorprone.VisitorState;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
@@ -21,18 +23,21 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public record CoeffectPath(
-        MethodInvocationTree methodInv,
+        ExpressionTree expressionTree,
         List<Type> binds,
         JCTree.JCMethodDecl enclosingMethod,
         VisitorState visitorState
 ) {
     public Collection<String> getRequirements() {
-        var requiredByMethod = extractMethodRequirements();
-        var requiredByLambdaReference = extractReferenceRequirements();
-        var required = Sets.union(
-                requiredByMethod,
-                requiredByLambdaReference
-        );
+        Set<String> required;
+        if (expressionTree instanceof MethodInvocationTree methodInv) {
+            required = extractMethodRequirements(methodInv);
+        } else if (expressionTree instanceof JCTree.JCMemberReference referenceTree) {
+            required = extractReferenceRequirements(referenceTree);
+        } else {
+            required = Set.of();
+        }
+
 
         var enclosingBinding = enclosingMethod == null ?
                                Set.of() : // Inside a static block
@@ -47,44 +52,12 @@ public record CoeffectPath(
         return Sets.difference(required, bounds);
     }
 
-    private Set<String> extractReferenceRequirements() {
-        var methodTree = (JCTree)methodInv.getMethodSelect();
-        if (!(methodTree instanceof JCTree.JCFieldAccess access)) {
-            return Set.of();
-        }
-        var selected = access.selected;
-        var parentType = selected.type;
-        if (!parentType.toString()
-                       .equals(Coeffect.Carrier.class.getCanonicalName())
-                || !(access.name.contentEquals("run") || access.name.contentEquals("call"))) {
-            return Set.of();
-        }
-        var argument = methodInv.getArguments().get(0);
-        if (!(argument instanceof JCTree.JCMemberReference ref)) {
-            return Set.of();
-        }
-
-        return getContextOfSymbol(ref.sym);
-    }
-    private Set<String> extractMethodRequirements() {
-        var methodTree = (JCTree)methodInv.getMethodSelect();
-        var methodSymbol = TreeInfo.symbol(methodTree);
-        var requiredContext = getContextOfSymbol(methodSymbol);
-        var additionalContext = extractUsedContext(methodInv, methodTree);
-        if (additionalContext == null) {
-            throw new IllegalStateException("Coeffect.get(...) used with non-class literal");
-        }
-
-        return Sets.union(requiredContext, additionalContext);
-    }
-
-    // region CoeffectPath construction functions
-    public static CoeffectPath of(MethodInvocationTree methodInv, VisitorState visitorState) {
+    public static CoeffectPath of(ExpressionTree expressionTree, VisitorState visitorState) {
         var invokedPath = visitorState.getPath();
         var binds = new ArrayList<Type>();
         var enclosingOfTree = getEnclosingOfTree(invokedPath, binds);
 
-        return new CoeffectPath(methodInv, binds, enclosingOfTree, visitorState);
+        return new CoeffectPath(expressionTree, binds, enclosingOfTree, visitorState);
     }
 
     /**
@@ -131,7 +104,22 @@ public record CoeffectPath(
 
         return (JCTree.JCMethodDecl)leaf;
     }
-    // endregion
+
+    public static Set<String> extractReferenceRequirements(JCTree.JCMemberReference referenceTree) {
+        return getContextOfSymbol(referenceTree.sym);
+    }
+
+    public static Set<String> extractMethodRequirements(MethodInvocationTree methodInv) {
+        var methodTree = (JCTree)methodInv.getMethodSelect();
+        var methodSymbol = TreeInfo.symbol(methodTree);
+        var requiredContext = getContextOfSymbol(methodSymbol);
+        var additionalContext = extractUsedContext(methodInv, methodTree);
+        if (additionalContext == null) {
+            throw new IllegalStateException("Coeffect.get(...) used with non-class literal");
+        }
+
+        return Sets.union(requiredContext, additionalContext);
+    }
 
     /**
      * @return The fully qualified name of the parameter inside of "Coeffect.get(...)". For methods that are not
