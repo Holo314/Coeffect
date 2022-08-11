@@ -327,7 +327,7 @@ When running the program you need to add `--add-modules jdk.incubator.concurrent
 
 #### Plugin
 
-To run the plugin you need to first add the following section to your `maven-compiler-plugin`:
+To run the plugin you need to add the following section to your `maven-compiler-plugin`:
 
 ```xml
 <configuration>
