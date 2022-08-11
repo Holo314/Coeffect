@@ -27,7 +27,13 @@ public record CoeffectPath(
         VisitorState visitorState
 ) {
     public Collection<String> getRequirements() {
-        var required = extractMethodRequirements();
+        var requiredByMethod = extractMethodRequirements();
+        var requiredByLambdaReference = extractReferenceRequirements();
+        var required = Sets.union(
+                requiredByMethod,
+                requiredByLambdaReference
+        );
+
         var enclosingBinding = enclosingMethod == null ?
                                Set.of() : // Inside a static block
                                getContextOfSymbol(TreeInfo.symbolFor(enclosingMethod));
@@ -41,7 +47,26 @@ public record CoeffectPath(
         return Sets.difference(required, bounds);
     }
 
-    private Sets.SetView<String> extractMethodRequirements() {
+    private Set<String> extractReferenceRequirements() {
+        var methodTree = (JCTree)methodInv.getMethodSelect();
+        if (!(methodTree instanceof JCTree.JCFieldAccess access)) {
+            return Set.of();
+        }
+        var selected = access.selected;
+        var parentType = selected.type;
+        if (!parentType.toString()
+                       .equals(Coeffect.Carrier.class.getCanonicalName())
+                || !(access.name.contentEquals("run") || access.name.contentEquals("call"))) {
+            return Set.of();
+        }
+        var argument = methodInv.getArguments().get(0);
+        if (!(argument instanceof JCTree.JCMemberReference ref)) {
+            return Set.of();
+        }
+
+        return getContextOfSymbol(ref.sym);
+    }
+    private Set<String> extractMethodRequirements() {
         var methodTree = (JCTree)methodInv.getMethodSelect();
         var methodSymbol = TreeInfo.symbol(methodTree);
         var requiredContext = getContextOfSymbol(methodSymbol);
