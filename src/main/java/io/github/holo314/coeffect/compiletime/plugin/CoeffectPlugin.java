@@ -1,5 +1,6 @@
 package io.github.holo314.coeffect.compiletime.plugin;
 
+import com.google.auto.service.AutoService;
 import com.google.errorprone.BugPattern;
 import com.google.errorprone.VisitorState;
 import com.google.errorprone.bugpatterns.BugChecker;
@@ -12,6 +13,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import java.util.Objects;
 
+@AutoService(BugChecker.class)
 @BugPattern(
         name = "Coeffect",
         summary = """
