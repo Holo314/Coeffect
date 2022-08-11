@@ -331,6 +331,7 @@ To run the plugin you need to first add the following section to your `maven-com
 
 ```xml
 <configuration>
+    ...
     <compilerArgs>
         <arg>-XDcompilePolicy=simple</arg>
         <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:Coeffect</arg>
