@@ -340,7 +340,7 @@ To run the plugin you need to first add the following section to your `maven-com
         <path>
             <groupId>io.github.holo314</groupId>
             <artifactId>Coeffect</artifactId>
-            <version>1.0.1</version>
+            <version>{coeffect.version}</version>
         </path>
     </annotationProcessorPaths>
 </configuration>
