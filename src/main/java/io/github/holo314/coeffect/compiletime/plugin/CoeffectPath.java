@@ -3,7 +3,6 @@ package io.github.holo314.coeffect.compiletime.plugin;
 import com.google.common.collect.Sets;
 import com.google.errorprone.VisitorState;
 import com.sun.source.tree.ExpressionTree;
-import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
@@ -14,17 +13,15 @@ import com.sun.tools.javac.tree.TreeInfo;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 
+import javax.annotation.Nullable;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.TypeMirror;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public record CoeffectPath(
         ExpressionTree expressionTree,
-        List<Type> binds,
+        Set<Type> binds,
         JCTree.JCMethodDecl enclosingMethod,
         VisitorState visitorState
 ) {
@@ -56,8 +53,36 @@ public record CoeffectPath(
         var invokedPath = visitorState.getPath();
         var binds = new ArrayList<Type>();
         var enclosingOfTree = getEnclosingOfTree(invokedPath, binds);
+        var coeffectClause = getCoeffectClause(invokedPath);
+        var carried = extractCarrierContext(coeffectClause);
+        return new CoeffectPath(expressionTree, carried, enclosingOfTree, visitorState);
+    }
 
-        return new CoeffectPath(expressionTree, binds, enclosingOfTree, visitorState);
+    private static Set<Type> extractCarrierContext(@Nullable Type carrier) {
+        if (carrier == null || !carrier.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())) {
+            return Set.of();
+        }
+        var result = new HashSet<Type>();
+        List<Type> args;
+        while (!((args = carrier.getTypeArguments()).get(1) instanceof Type.WildcardType)
+                && !(args.get(1) instanceof Type.CapturedType)) {
+            result.add(args.get(0));
+            carrier = args.get(1);
+        }
+        return result;
+    }
+
+    private static Type getCoeffectClause(TreePath path) {
+        for (; path != null; path = path.getParentPath()) {
+            if (path.getLeaf() instanceof JCTree.JCMethodInvocation inv
+                    && inv.getMethodSelect() instanceof JCTree.JCFieldAccess access
+                    && access.selected.type.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())
+                    && (access.name.contentEquals("call") || access.name.contentEquals("run"))) {
+                return access.selected.type;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -74,7 +99,7 @@ public record CoeffectPath(
      */
     private static void addWithes(JCTree.JCFieldAccess access, ArrayList<Type> acc) {
         if (access.selected instanceof JCTree.JCMethodInvocation innerInv // the "with" invocation
-                && innerInv.type.toString().equals(Coeffect.Carrier.class.getCanonicalName())
+                && innerInv.type.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())
                 && innerInv.getMethodSelect() instanceof JCTree.JCFieldAccess innerAccess // the "with" field access
                 && innerAccess.name.contentEquals("with")) {
 
@@ -88,8 +113,7 @@ public record CoeffectPath(
         }
     }
 
-    private static JCTree.JCMethodDecl getEnclosingOfTree(final TreePath oPath, final ArrayList<Type> acc) {
-        var path = oPath;
+    private static JCTree.JCMethodDecl getEnclosingOfTree(TreePath path, final ArrayList<Type> acc) {
         Tree leaf;
         while (!((leaf = path.getLeaf()) instanceof JCTree.JCMethodDecl)) {
             if (leaf instanceof JCTree.JCMethodInvocation inv

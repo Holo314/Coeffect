@@ -81,7 +81,7 @@ Notice that `foo` receive a parameter **only** to pass it to `bar`, it doesn't a
 
 ---
 
-## The "solution"
+# The "solution"
 
 The solution this library offers is to create a (partial) [Coeffect System](http://tomasp.net/coeffects/).
 
@@ -127,7 +127,7 @@ yell at you.
 
 ---
 
-## The details
+# The details
 
 There are few basic rules one should keep in mind, let's go over them (every time I say `run`, it also applies to `call`
 , which is the same but also returns a value):
@@ -175,7 +175,7 @@ Coeffect.with(3)
         });
 ```
 
-## Threads
+### Threads
 
 One of the most complicated parts of programming is multiprocessing, be it with threads/continuations or any other
 implementation.
@@ -185,24 +185,97 @@ complement [Structured Concurrency](https://openjdk.org/jeps/428), that means th
 together should use Structured Concurrency, any use of non-Structured Concurrency can cause false positives.
 
 
----
+## The `Coeffect.Carrier` object
 
-## Known bugs:
+When first binding an object using `Coeffect#with` the return type is `Carrier<>`.
 
-Currently, there are two major bugs:
-
-### Saving `Coeffect.Carrier` as a variable
-
-The **compiletime** checks only works with **chaining `with` till the `Coeffect` call**, that means that:
+This object is an immutable object contains within it both the actual stacks, and the types that your bound, so:
 
 ```java
-var x = Coeffect.with(3);
-x.run(() -> System.out.println(Coeffect.get(Integer.class))); // this will fail compiling
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+class Example {
+    void foo() {
+        var carrier = Coeffect.with(":|");
+        carrier.with("|:");
+        carrier.run(() -> System.out.println(Coeffect.get(String.class))); // print ":|"
+    }
+}
+```
+Like I said above, this object holds the types that got bound, you can see that if you are use explicit typing, instead of `var`:
+
+```java
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+class Example {
+    void foo() {
+        // Thanks god for type inference
+        Coeffect.Carrier<String, Coeffect.Carrier<Void, Coeffect.Carrier<?, ?>>> carrier = Coeffect.with(":|");
+        carrier.with("|:");
+        carrier.run(() -> System.out.println(Coeffect.get(String.class))); // print ":|"
+    }
+}
+```
+The `Coeffect` plugin uses this type as a linked list:
+
+```
+null                            ⇔ Coeffect.Carrier<?, ?>
+Node(Void, null)                ⇔ Coeffect.Carrier<Void, null>                  ⇔ Coeffect.Carrier<Void, Coeffect.Carrier<?, ?>>
+Node(String, Node(Void, null))  ⇔ Coeffect.Carrier<String, Node(Void, null)>    ⇔ Coeffect.Carrier<String, Coeffect.Carrier<Void, null>> ⇔ Coeffect.Carrier<String, Coeffect.Carrier<Void, Coeffect.Carrier<?, ?>>>
+```
+Using this linked list it checks which types you used but didn't bind. This is why **you should never downcast the carrier object**.
+
+### Passing `Coeffect.Carrier` as a parameter
+
+It is possible to think of `Coeffect.Carrier` as a set of types that represent some context, each instance of `Coeffect.Carrier` represent a set of parameters that you can use explicitly.
+
+This is why it may be sometimes tempting to pass `Coeffect.Carrier` as a parameter to a method, but **you should never do this**.
+
+This is several reasons, the first and most important of them is: the whole point of this library is to avoid passing contextual objects as parameters to a method. Passing `Coeffect.Carrier` as a parameter is basically using the `Coeffect` system to implement parameters!
+
+Instead, any method that receive a `Coeffect.Carrier` parameter should transform it into `@WithContext` annotation:
+```java
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+class Example {
+    void foo() {
+        bar(Coeffect.with(":'("));
+    }
+
+    void bar(Coeffect.Carrier<String, Coeffect.Carrier<Void, Coeffect.Carrier<?, ?>>> x) {
+        x.run(Example::qux);
+    }
+
+    @WithContext(String.class)
+    void qux() {
+        System.out.println(Coeffect.get(String.class));
+    }
+}
+```
+**Into**
+```java
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+class Example {
+    void foo() {
+        Coeffect.with(":')").run(Example::bar);
+    }
+    
+    @WithContext(String.class)
+    void bar() {
+        qux();
+    }
+
+    @WithContext(String.class)
+    void qux() {
+        System.out.println(Coeffect.get(String.class));
+    }
+}
 ```
 
-The first thing in the planning is the fix the bug above.
-
-## Lambda's bug
+## Lambda's problem
 
 Currently, annotation's parameters must be known at compiletime, that means that _there is not way to allow generics on
 the annotation level_.
@@ -254,7 +327,7 @@ I am open for suggestions for better solutions.
 
 ---
 
-## Future Work and Extra notes
+# Future Work and Extra notes
 
 Currently, the compiletime component is a custom component of [error-prone](https://errorprone.info/) with is only an
 analysing tool.
@@ -277,7 +350,7 @@ Coeffect.with(3)
         });
 ```
 
-I was also toying with the idea of enabling _named coeffects_. But this is not in the planning as for now.
+I was also toying with the idea of enabling _named coeffects_.
 
 ### Effects
 

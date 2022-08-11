@@ -1,5 +1,6 @@
 package io.github.holo314.coeffect.runtime;
 
+import com.sun.tools.javac.code.Type;
 import jdk.incubator.concurrent.ExtentLocal;
 
 import java.util.HashMap;
@@ -20,41 +21,41 @@ public final class Coeffect {
         COEFFECT.put(void.class, ExtentLocal.newInstance());
     }
 
-    private static final ExtentLocal.Carrier extentCarrier = ExtentLocal.where(COEFFECT.get(void.class), null);
+    private static final ExtentLocal.Carrier baseExtentCarrier = ExtentLocal.where(COEFFECT.get(void.class), null);
+    private static final Carrier<Void, Carrier<?, ?>> baseCarrier = new Carrier<>(baseExtentCarrier);
 
     /**
      * creates a new binding for type {@code value#getClass()}
      *
      * @param value the new value of the binding
      */
-    public static Carrier with(Object value) {
-        return new Carrier(extentCarrier).with(value);
+    public static <StartType> Carrier<StartType, Carrier<Void, Carrier<?, ?>>>
+    with(StartType value) {
+        return baseCarrier.with(value);
     }
 
     /**
-     * creates a new binding for type T
+     * creates a new binding for type StartType
      *
-     * @param value    the new binding of T
-     * @param classKey use to bypass type-erasure, equals to {@code Class&lt;T&gt;}
+     * @param value    the new binding of StartType
+     * @param classKey use to bypass type-erasure, equals to {@code Class&lt;StartType&gt;}
      */
-    public static <T> Carrier with(T value, Class<? extends T> classKey) {
-        return new Carrier(extentCarrier).with(value, classKey);
+    public static <StartType> Carrier<StartType, Carrier<Void, Carrier<?, ?>>>
+    with(StartType value, Class<? extends StartType> classKey) {
+        return baseCarrier.with(value, classKey);
     }
 
     /**
      * Create new binding for {@code classKey} with value {@code null}
      * Because of type erasure, we cannot use generic-with method to set values to null
      *
-     * @param classKey use to bypass type-erasure, equals to {@code Class&lt;T&gt;}
+     * @param classKey use to bypass type-erasure, equals to {@code Class&lt;StartType&gt;}
      */
-    public Carrier bindNull(Class<?> classKey) {
-        return new Carrier(extentCarrier).bindNull(classKey);
+    public <StartType> Carrier<StartType, Carrier<Void, Carrier<?, ?>>>
+    bindNull(Class<StartType> classKey) {
+        return baseCarrier.bindNull(classKey);
     }
 
-
-    private static void createInstance(Class<?> classKey) {
-        COEFFECT.putIfAbsent(classKey, ExtentLocal.newInstance());
-    }
 
     @SuppressWarnings({"unchecked"})
     public static <T> T get(Class<T> c)
@@ -81,8 +82,15 @@ public final class Coeffect {
         return (T)COEFFECT.get(c).get();
     }
 
-    @SuppressWarnings({"ClassCanBeRecord"})
-    public static class Carrier {
+    /**
+     * God bless generics type inference. We are using Java's Generics Type System to create compile time recursive data type.
+     * <p>
+     * The object {@link Carrier} contains the current instance of {@link ExtentLocal.Carrier}. The type {@link Carrier}{@code <ValueType, Previous>} is a recursive data type that represent a linked list at compiletime with terminating value {@link Type.WildcardType}({@code ?}).
+     * @param <ValueType> The type of the last value that got bind, or {@link Type.WildcardType}
+     * @param <Previous> A type {@link Carrier} that represent the previews bind, or {@link Type.WildcardType}
+     */
+    public static final class Carrier<ValueType, Previous extends Carrier<?, ?>> {
+
         private final ExtentLocal.Carrier innerCarrier;
 
         private Carrier(ExtentLocal.Carrier innerCarrier) {
@@ -94,13 +102,14 @@ public final class Coeffect {
          *
          * @param value the new value of the binding
          */
-        public Carrier with(Object value) {
+        public <NextType> Carrier<NextType, Carrier<ValueType, Previous>>
+        with(NextType value) {
             if (value == null) {
-                return this;
+                throw new NullPointerException("Value cannot be null, use 'bindNull' for binding null");
             }
             var classKey = value.getClass();
             createInstance(classKey);
-            return new Carrier(innerCarrier.where(COEFFECT.get(classKey), value));
+            return new Carrier<>(innerCarrier.where(COEFFECT.get(classKey), value));
         }
 
         /**
@@ -109,13 +118,14 @@ public final class Coeffect {
          * @param value    the new binding of T
          * @param classKey use to bypass type-erasure, equals to {@code Class&lt;T&gt;}
          */
-        public <T> Carrier with(T value, Class<? extends T> classKey) {
+        public <NextType> Carrier<NextType, Carrier<ValueType, Previous>>
+        with(NextType value, Class<? extends NextType> classKey) {
             if (value == null) {
-                return this;
+                throw new NullPointerException("Value cannot be null, use 'bindNull' for binding null");
             }
 
             createInstance(classKey);
-            return new Carrier(innerCarrier.where(COEFFECT.get(classKey), value));
+            return new Carrier<>(innerCarrier.where(COEFFECT.get(classKey), value));
         }
 
         /**
@@ -124,9 +134,10 @@ public final class Coeffect {
          *
          * @param classKey use to bypass type-erasure, equals to {@code Class&lt;T&gt;}
          */
-        public Carrier bindNull(Class<?> classKey) {
+        public <NextType> Carrier<NextType, Carrier<ValueType, Previous>>
+        bindNull(Class<NextType> classKey) {
             createInstance(classKey);
-            return new Carrier(innerCarrier.where(COEFFECT.get(classKey), null));
+            return new Carrier<>(innerCarrier.where(COEFFECT.get(classKey), null));
         }
 
         public void run(Runnable op) {
@@ -137,6 +148,10 @@ public final class Coeffect {
                 throws Exception {
             return innerCarrier.call(op);
         }
+    }
+
+    private static void createInstance(Class<?> classKey) {
+        COEFFECT.putIfAbsent(classKey, ExtentLocal.newInstance());
     }
 }
 

@@ -9,12 +9,13 @@ public class Test {
 
     @WithContext({Integer.class})
     public static void bar() {
-        Coeffect
-                .with("Holo")
-                .with("Myuri", CharSequence.class)
-                .run(() -> {
-                    Coeffect.get(CharSequence.class);
-                    foo();
-                });
+        var holo = Coeffect.with("Holo");
+        holo.with("Myuri", CharSequence.class)
+            .run(() -> {
+                Coeffect.get(CharSequence.class);
+                foo();
+            });
+
+        holo.run(Test::foo);
     }
 }
