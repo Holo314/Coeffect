@@ -19,7 +19,7 @@ public class Example {
     private static ThreadLocal<String> TL = new ThreadLocal<>();
 
     public void foo() {
-        System.out.println(Example.get());
+        System.out.println(TL.get());
     }
 
     public static void main(String[] args) {
