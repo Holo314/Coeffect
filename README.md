@@ -1,4 +1,6 @@
 # Coeffect
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.holo314/Coeffect.svg?label=Maven%20Central)](https://search.maven.org/artifact/io.github.holo314/Coeffect/1.0/jar)
+
 Add a partial Coeffect system into Java using Loom's ExtentLocals.
 
 ---
@@ -264,4 +266,4 @@ There are languages that are completely built upon an Effect System, for example
 ---
 
 
-The plugin and library are available in [Maven central](https://s01.oss.sonatype.org/#nexus-search;checksum~97d2dbc7d26b50152093278a91e21b136da75895)
+The plugin and library are available in [Maven central](https://search.maven.org/artifact/io.github.holo314/Coeffect/1.0/jar)
