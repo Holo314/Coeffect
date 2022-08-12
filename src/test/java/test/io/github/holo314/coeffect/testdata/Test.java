@@ -24,7 +24,7 @@ public class Test implements Serializable {
     }
 }
 
-interface Test0 extends Runnable{
+interface Test0 {
     @WithContext(Test0.class)
     void foo(char z);
 }
@@ -39,11 +39,6 @@ class Test1
     @WithContext({Test0.class})
     @Override
     public void foo(char z) {
-
-    }
-
-    @Override
-    public void run() {
 
     }
 }

@@ -66,14 +66,18 @@ well as long in the calling site**.
 The second point is easier to miss, but here is an example:
 
 ```java
-public static void main(String[] args) {
-    foo(666)
-}
-public static void foo(int x) {
-    bar(x);
-}
-public static void bar(int x) {
-   System.out.println(x);
+class clazz {
+    public static void main(String[] args) {
+        foo(666);
+    }
+
+    public static void foo(int x) {
+        bar(x);
+    }
+
+    public static void bar(int x) {
+        System.out.println(x);
+    }
 }
 ```
 
@@ -90,22 +94,24 @@ The idea is to use `ExtentLocal` and a compiler plugin to add safety and explici
 `Implementation note:` It is impossible to create this system with `ThreadLocal` because there is no control over the
 call of `ThreadLocal#remove`.
 
-Before diving into the details, let's see how the above example will look like::
+Before diving into the details, let's see how the above example will look like:
 
 ```java
-public static void main(String[]args){
-    Coeffect.with(666)
-        .run(() -> foo());
-}
+class clazz {
+    public static void main(String[] args) {
+        Coeffect.with(666)
+                .run(() -> foo());
+    }
 
-@WithContext(Integer.class)
-public static void foo(){
-   bar();
-}
+    @WithContext(Integer.class)
+    public static void foo() {
+        bar();
+    }
 
-@WithContext(Integer.class)
-public static void bar(){
-   System.out.println(Coeffect.get(Integer.class));
+    @WithContext(Integer.class)
+    public static void bar() {
+        System.out.println(Coeffect.get(Integer.class));
+    }
 }
 ```
 
@@ -162,17 +168,53 @@ not `"hi".getClass()`, using non-class literals can either fail at complication,
 The lifetime of every binding is exactly the `Coeffect.Carrier#run` clause:
 
 ```java
-Coeffect.with(3)
-        .with("Holo")
-        .run(() -> {
-            Coeffect.with(6)
-                    .run(() -> {
-                        Coeffect.get(Integer.class); // 6
-                        Coeffect.get(String.class); // Holo
-                    });
-            Coeffect.get(Integer.class); // 3
-            Coeffect.get(String.class); // Holo
-        });
+class clazz {
+    void foo() {
+        Coeffect.with(3)
+                .with("Holo")
+                .run(() -> {
+                    Coeffect.with(6)
+                            .run(() -> {
+                                Coeffect.get(Integer.class); // 6
+                                Coeffect.get(String.class); // Holo
+                            });
+                    Coeffect.get(Integer.class); // 3
+                    Coeffect.get(String.class); // Holo
+                });
+    }
+}
+```
+
+### Inheritance
+
+For similar reasoning as return types
+and [checked exceptions](https://docs.oracle.com/javase/tutorial/essential/exceptions/runtime.html), the classes in
+the `@WithContext` annotations
+are [covariant](https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)).
+
+That means that if method `clazz::foo` is annotated with `@WithContext(...T)` (where `...T` means list of types),
+and `clazz1` extends `clazz` as well as `clazz1::foo` is annotated with `WithContext(...Z)` then we require that `...Z`
+will be a subset of `...T`:
+
+```java
+import io.github.holo314.coeffect.compiletime.annotations.WithContext;
+
+class clazz {
+    @WithContext({String.class, Integer.class})
+    void foo() {}
+}
+
+class class1
+        extends clazz {
+    // @WithContext({String.class, Integer.class}) // legal
+    // @WithContext({String.class}) // legal
+    // @WithContext({Integer.class}) // legal
+    // @WithContext() // legal
+    @WithContext(CharSequence.class)
+    // illegal, `CharSequence.class` does not appear in the `@WithContext` annotation of `clazz::foo`
+    @Override
+    void foo() {}
+}
 ```
 
 ### Threads
@@ -183,7 +225,6 @@ implementation.
 `Coeffect` is built upon `ExtentLocal` that comes with project Loom to
 complement [Structured Concurrency](https://openjdk.org/jeps/428), that means that all work with threads and `Coeffect`
 together should use Structured Concurrency, any use of non-Structured Concurrency can cause false positives.
-
 
 ## The `Coeffect.Carrier` object
 
@@ -202,7 +243,9 @@ class Example {
     }
 }
 ```
-Like I said above, this object holds the types that got bound, you can see that if you are use explicit typing, instead of `var`:
+
+Like I said above, this object holds the types that got bound, you can see that if you are use explicit typing, instead
+of `var`:
 
 ```java
 import io.github.holo314.coeffect.runtime.Coeffect;
@@ -216,6 +259,7 @@ class Example {
     }
 }
 ```
+
 The `Coeffect` plugin uses this type as a linked list:
 
 ```
@@ -223,17 +267,24 @@ null                            ⇔ Coeffect.Carrier<?, ?>
 Node(Void, null)                ⇔ Coeffect.Carrier<Void, null>                  ⇔ Coeffect.Carrier<Void, Coeffect.Carrier<?, ?>>
 Node(String, Node(Void, null))  ⇔ Coeffect.Carrier<String, Node(Void, null)>    ⇔ Coeffect.Carrier<String, Coeffect.Carrier<Void, null>> ⇔ Coeffect.Carrier<String, Coeffect.Carrier<Void, Coeffect.Carrier<?, ?>>>
 ```
-Using this linked list it checks which types you used but didn't bind. This is why **you should never downcast the carrier object**.
+
+Using this linked list it checks which types you used but didn't bind. This is why **you should never downcast the
+carrier object**.
 
 ### Passing `Coeffect.Carrier` as a parameter
 
-It is possible to think of `Coeffect.Carrier` as a set of types that represent some context, each instance of `Coeffect.Carrier` represent a set of parameters that you can use explicitly.
+It is possible to think of `Coeffect.Carrier` as a set of types that represent some context, each instance
+of `Coeffect.Carrier` represent a set of parameters that you can use explicitly.
 
-This is why it may be sometimes tempting to pass `Coeffect.Carrier` as a parameter to a method, but **you should never do this**.
+This is why it may be sometimes tempting to pass `Coeffect.Carrier` as a parameter to a method, but **you should never
+do this**.
 
-This is several reasons, the first and most important of them is: the whole point of this library is to avoid passing contextual objects as parameters to a method. Passing `Coeffect.Carrier` as a parameter is basically using the `Coeffect` system to implement parameters!
+This is several reasons, the first and most important of them is: the whole point of this library is to avoid passing
+contextual objects as parameters to a method. Passing `Coeffect.Carrier` as a parameter is basically using
+the `Coeffect` system to implement parameters!
 
 Instead, any method that receive a `Coeffect.Carrier` parameter should transform it into `@WithContext` annotation:
+
 ```java
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
@@ -253,7 +304,9 @@ class Example {
     }
 }
 ```
+
 **Into**
+
 ```java
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
@@ -262,7 +315,7 @@ class Example {
     void foo() {
         Coeffect.with(":')").run(Example::bar);
     }
-    
+
     @WithContext(String.class)
     void bar() {
         qux();
@@ -287,7 +340,7 @@ import java.util.ArrayList;
 import java.util.function.Function;
 
 public class IntTransformer {
-    private void ArrayList<Function<Integer, Integer>> transformers =new ArrayList<>();
+    ArrayList<Function<Integer, Integer>> transformers = new ArrayList<>();
 
     public void transform(Function<Integer, Integer> transform) {
         transformers.add(map);
@@ -337,17 +390,21 @@ In the future I want to add a functionality for more fluent access to the stacks
 In particular, I want to be able to do something like the following:
 
 ```java
-Coeffect.with(3)
-        .with("Holo")
-        .run(() -> {
-            Coeffect.with(6)
-                    .run(() -> {
-                        Integer.get(); // 6
-                        String.get(); // Holo
-                    });
-            Integer.get(); // 3
-            String.get(); // Holo
-        });
+class clazz {
+    void foo() {
+        Coeffect.with(3)
+                .with("Holo")
+                .run(() -> {
+                    Coeffect.with(6)
+                            .run(() -> {
+                                Integer.get(); // 6
+                                String.get(); // Holo
+                            });
+                    Integer.get(); // 3
+                    String.get(); // Holo
+                });
+    }
+}
 ```
 
 I was also toying with the idea of enabling _named coeffects_.
@@ -403,6 +460,7 @@ When running the program you need to add `--add-modules jdk.incubator.concurrent
 To run the plugin you need to add the following section to your `maven-compiler-plugin`:
 
 ```xml
+
 <configuration>
     ...
     <compilerArgs>
@@ -418,4 +476,5 @@ To run the plugin you need to add the following section to your `maven-compiler-
     </annotationProcessorPaths>
 </configuration>
 ```
+
 The `-XepDisableAllChecks` flag is optional, it is there to disable all the default Error-Prone checks
