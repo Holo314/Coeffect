@@ -193,7 +193,7 @@ the `@WithContext` annotations
 are [covariant](https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)).
 
 That means that if method `clazz::foo` is annotated with `@WithContext(...T)` (where `...T` means list of types),
-and `clazz1` extends `clazz` as well as `clazz1::foo` is annotated with `WithContext(...Z)` then we require that `...Z`
+and `clazz1` extends `clazz` as well as `clazz1::foo` is annotated with `@WithContext(...Z)` then we require that `...Z`
 will be a subset of `...T`:
 
 ```java
