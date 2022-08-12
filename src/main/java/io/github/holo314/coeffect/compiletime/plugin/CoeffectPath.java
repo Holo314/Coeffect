@@ -58,7 +58,7 @@ public record CoeffectPath(
         return new CoeffectPath(expressionTree, carried, enclosingOfTree, visitorState);
     }
 
-    private static Set<Type> extractCarrierContext(@Nullable Type carrier) {
+    public static Set<Type> extractCarrierContext(@Nullable Type carrier) {
         if (carrier == null || !carrier.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())) {
             return Set.of();
         }
@@ -72,7 +72,7 @@ public record CoeffectPath(
         return result;
     }
 
-    private static Type getCoeffectClause(TreePath path) {
+    public static Type getCoeffectClause(TreePath path) {
         for (; path != null; path = path.getParentPath()) {
             if (path.getLeaf() instanceof JCTree.JCMethodInvocation inv
                     && inv.getMethodSelect() instanceof JCTree.JCFieldAccess access
@@ -97,7 +97,7 @@ public record CoeffectPath(
      * This is because with the current implementation of Coeffect.Carrier, the type of the binding is not encoded in the class.
      * If in feature versions it will be encoded, then there won't be the need to traverse over "with", but over the generic type of "Coeffect.Carrier".
      */
-    private static void addWithes(JCTree.JCFieldAccess access, ArrayList<Type> acc) {
+    public static void addWithes(JCTree.JCFieldAccess access, ArrayList<Type> acc) {
         if (access.selected instanceof JCTree.JCMethodInvocation innerInv // the "with" invocation
                 && innerInv.type.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())
                 && innerInv.getMethodSelect() instanceof JCTree.JCFieldAccess innerAccess // the "with" field access
@@ -113,7 +113,7 @@ public record CoeffectPath(
         }
     }
 
-    private static JCTree.JCMethodDecl getEnclosingOfTree(TreePath path, final ArrayList<Type> acc) {
+    public static JCTree.JCMethodDecl getEnclosingOfTree(TreePath path, final ArrayList<Type> acc) {
         Tree leaf;
         while (!((leaf = path.getLeaf()) instanceof JCTree.JCMethodDecl)) {
             if (leaf instanceof JCTree.JCMethodInvocation inv
@@ -149,7 +149,7 @@ public record CoeffectPath(
      * @return The fully qualified name of the parameter inside of "Coeffect.get(...)". For methods that are not
      * "Coeffect.get(...)" return an empty list, and for non-Class-literal invocation of "Coeffect.get(...)" return null.
      */
-    private static Set<String> extractUsedContext(MethodInvocationTree methodInv, JCTree methodTree) {
+    public static Set<String> extractUsedContext(MethodInvocationTree methodInv, JCTree methodTree) {
         if (!(methodTree instanceof JCTree.JCFieldAccess fieldAccess)) {
             return Set.of();
         }
@@ -179,7 +179,7 @@ public record CoeffectPath(
         return Set.of(argumentDiamondType.toString());
     }
 
-    private static Set<String> getContextOfSymbol(Symbol methodSymbol) {
+    public static Set<String> getContextOfSymbol(Symbol methodSymbol) {
         Set<String> requiredContext;
         var contextDeclaration = methodSymbol.getAnnotation(WithContext.class);
         if (contextDeclaration == null) {
@@ -191,7 +191,7 @@ public record CoeffectPath(
         return requiredContext;
     }
 
-    private static List<? extends TypeMirror> getContextTypes(WithContext contextDeclaration) {
+    public static List<? extends TypeMirror> getContextTypes(WithContext contextDeclaration) {
         try {
             var ignore = contextDeclaration.value();// always throws exceptions
         } catch (MirroredTypesException mirrors) {
