@@ -217,6 +217,8 @@ class class1
 }
 ```
 
+Similar thing is true about `interface`s and `implementation`
+
 ### Threads
 
 One of the most complicated parts of programming is multiprocessing, be it with threads/continuations or any other
