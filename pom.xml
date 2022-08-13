@@ -5,7 +5,7 @@
 
     <groupId>io.github.holo314</groupId>
     <artifactId>Coeffect</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Add a partial Coeffect system into Java using Loom's ExtentLocals</description>
     <url>https://github.com/Holo314/Coeffect</url>

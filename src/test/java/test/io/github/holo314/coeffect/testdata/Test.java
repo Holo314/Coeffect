@@ -5,8 +5,8 @@ import io.github.holo314.coeffect.runtime.Coeffect;
 
 import java.io.Serializable;
 
-public class Test implements Serializable {
-    @WithContext({java.lang.String.class})
+public class Test {
+    @WithContext({java.lang.String.class,})
     public void foo() {}
 
     public void foo(char x) {}
@@ -21,6 +21,11 @@ public class Test implements Serializable {
             });
 
         holo.run(this::foo);
+    }
+
+    public void qux() {
+        // BUG: Diagnostic matches: Context
+        new Test1().foo('h');
     }
 }
 

@@ -1,6 +1,7 @@
 package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.auto.service.AutoService;
+import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.errorprone.BugPattern;
@@ -14,8 +15,13 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @AutoService(BugChecker.class)
 @BugPattern(
@@ -48,10 +54,10 @@ public class CoeffectPlugin
         try {
             var requirements = path.getRequirements();
             if (!requirements.isEmpty()) {
-                return describeMatch(path.expressionTree());
+                return describeContextViolation(path.expressionTree(), requirements);
             }
         } catch (IllegalStateException e) {
-            return describeMatch(path.expressionTree());
+            return describeLiteralViolation(path.expressionTree(), e.getMessage());
         }
 
         return Description.NO_MATCH;
@@ -71,15 +77,51 @@ public class CoeffectPlugin
                 requiredBySupers.filter(requirement -> !requirement.context().containsAll(specifiedRequirements))
                                 .toList();
 
-        return covariant.isEmpty() ? Description.NO_MATCH : describe(methodTree, covariant, specifiedRequirements);
+        return covariant.isEmpty() ? Description.NO_MATCH
+                                   : describeInheritanceViolation(methodTree, covariant, specifiedRequirements);
     }
 
-
-    public Description describe(Tree node, String message) {
-        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), message).build();
+    public Description describeLiteralViolation(Tree node, String msg) {
+        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg)
+                          .build();
     }
 
-    public Description describe(
+    public Description describeContextViolation(Tree node, Collection<String> missings) {
+        var msg = new StringBuilder()
+                .append("Missing requirements in @WithContext: ")
+                .append(Iterables.toString(missings))
+                .append(System.lineSeparator())
+                .append("\t")
+                .append("Add the requirements to the context or wrap it with run/call:")
+                .append(System.lineSeparator())
+                .append("\t\t");
+
+        var with = new StringBuilder().append("Coeffect");
+        missings.forEach(withCounter((i, missing) -> {
+            var typeSplit = missing.split("[.]");
+            var type = typeSplit[typeSplit.length - 1];
+            with.append(".with(")
+                .append("v")
+                .append(type)
+                .append(i)
+                .append(")")
+                .append(System.lineSeparator())
+                .append("\t\t\t\t");
+        }));
+        var call = with + ".call(() -> ...);";
+        var run = with + ".run(() -> ...);";
+
+        msg.append(run)
+           .append(System.lineSeparator())
+           .append("---")
+           .append(System.lineSeparator())
+           .append("\t\t")
+           .append(call);
+        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg.toString())
+                          .build();
+    }
+
+    public Description describeInheritanceViolation(
             Tree node, List<InheritanceUtils.Contextual> covariantViolation, Set<String> specifiedRequirements
     ) {
         var msgBuilder = new StringBuilder().append("Method requires ")
@@ -104,5 +146,10 @@ public class CoeffectPlugin
 
         return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msgBuilder.toString())
                           .build();
+    }
+
+    public static <T> Consumer<T> withCounter(BiConsumer<Integer, T> consumer) {
+        AtomicInteger counter = new AtomicInteger(0);
+        return item -> consumer.accept(counter.getAndIncrement(), item);
     }
 }
