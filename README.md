@@ -1,6 +1,6 @@
 # Coeffect
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.holo314/Coeffect.svg?label=Maven%20Central)](https://search.maven.org/artifact/io.github.holo314/Coeffect)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.holo314/Coeffect.svg?label=Maven%20Central)](https://search.maven.org/artifact/io.github.holo314/Coeffect) [![license](https://img.shields.io/github/license/holo314/Coeffect)](https://www.apache.org/licenses/LICENSE-2.0)
 
 Add a partial Coeffect system into Java using Loom's ExtentLocals.
 
