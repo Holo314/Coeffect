@@ -85,6 +85,13 @@ public class CoeffectPlugin
     }
 
     public Description describeContextViolation(CoeffectPath node, Collection<String> missings) {
+        var wither = "@WithContext({" + Iterables.toString(missings)
+                                                 .replaceAll("[\\[\\]]", "") + ", ...}"
+                + node.enclosingMethod()
+                      .toString()
+                      .replaceAll("(?s)\\{.*}", "{...}")
+                      .replaceAll("@[a-zA-Z0-9_]*(\\([^)]*\\))?", "");
+
         var msg = new StringBuilder()
                 .append("Missing requirements in @WithContext: ")
                 .append(Iterables.toString(missings))
@@ -93,12 +100,7 @@ public class CoeffectPlugin
                 .append("Add the requirements to the context or wrap it with run/call:")
                 .append(System.lineSeparator())
                 .append("\t\t")
-                .append(node.enclosingMethod()
-                            .toString()
-                            .replaceAll("(?s)\\{.*}", "{...}")
-                            .replaceAll("@WithContext(.*)", "@WithContext({" + Iterables.toString(missings)
-                                                                                        .replaceAll("[\\[\\]]", "") + ", ...}")
-                            .replace("\n", "\n\t\t"))
+                .append(wither.replace("\n", "\n\t\t"))
                 .append(System.lineSeparator())
                 .append("---")
                 .append(System.lineSeparator())
