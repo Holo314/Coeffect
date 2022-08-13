@@ -32,31 +32,33 @@ public class ContextTest {
                          .expectErrorMessage("Inheritance", (error ->
                                  error.replaceAll("\\s", "")
                                       .contentEquals("""
-                                                     [Coeffect] Method requires [java.lang.CharSequence, test.io.github.holo314.coeffect.testdata.Test0, java.lang.String] but implements:
-                                                           test.io.github.holo314.coeffect.testdata.Test0#foo(char) which requires [java.lang.CharSequence]. Remove [test.io.github.holo314.coeffect.testdata.Test0, java.lang.String] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test0#foo(char)
-                                                           test.io.github.holo314.coeffect.testdata.Test#foo(char) which requires []. Remove [java.lang.CharSequence, test.io.github.holo314.coeffect.testdata.Test0, java.lang.String] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test#foo(char)
+                                                     [Coeffect] Method requires [java.lang.CharSequence, java.lang.String, test.io.github.holo314.coeffect.testdata.Test0] but implements:
+                                                           test.io.github.holo314.coeffect.testdata.Test#foo(char) which requires []. Remove [java.lang.CharSequence, java.lang.String, test.io.github.holo314.coeffect.testdata.Test0] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test#foo(char)
+                                                           test.io.github.holo314.coeffect.testdata.Test0#foo(char) which requires [java.lang.CharSequence]. Remove [java.lang.String, test.io.github.holo314.coeffect.testdata.Test0] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test0#foo(char)
                                                          (see https://github.com/Holo314/coeffect)
                                                      """.replaceAll("\\s", ""))))
                          .expectErrorMessage("Context", (error -> {
                              var missings =
                                      List.of(CharSequence.class.getCanonicalName(), "test.io.github.holo314.coeffect.testdata.Test0", String.class.getCanonicalName());
+
+                             var wither = "@WithContext({" + Iterables.toString(missings.stream().sorted().toList()) // transform to sorted list for tests
+                                                                      .replaceAll("[\\[\\]]", "") + ", ...}"
+                                     + "public void qux() {...}";
                              var expected = new StringBuilder()
                                      .append("[Coeffect] Missing requirements in @WithContext: ")
-                                     .append(Iterables.toString(missings))
+                                     .append(Iterables.toString(missings.stream().sorted().toList())) // transform to sorted list for tests
                                      .append(System.lineSeparator())
                                      .append("\t")
                                      .append("Add the requirements to the context or wrap it with run/call:")
                                      .append(System.lineSeparator())
-                                     .append("""
-                                             \t\t@WithContext({java.lang.CharSequence, test.io.github.holo314.coeffect.testdata.Test0, java.lang.String, ...}
-                                             \t\tpublic void qux() {...}
-                                             """)
+                                     .append("\t\t")
+                                     .append(wither.replace("\n", "\n\t\t"))
                                      .append("---")
                                      .append(System.lineSeparator())
                                      .append("\t\t");
 
                              var with = new StringBuilder().append("Coeffect");
-                             missings.forEach(withCounter((i, missing) -> {
+                             missings.stream().sorted().forEach(withCounter((i, missing) -> {
                                  var typeSplit = missing.split("[.]");
                                  var type = typeSplit[typeSplit.length - 1];
                                  with.append(".with(")

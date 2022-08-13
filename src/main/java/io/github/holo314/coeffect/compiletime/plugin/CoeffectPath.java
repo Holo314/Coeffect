@@ -54,7 +54,9 @@ public record CoeffectPath(
         var binds = new ArrayList<Type>();
         var enclosingOfTree = getEnclosingOfTree(invokedPath, binds);
         var coeffectClause = getCoeffectClause(invokedPath);
-        var carried = extractCarrierContext(coeffectClause);
+        var carried = coeffectClause.stream().map(CoeffectPath::extractCarrierContext)
+                                    .flatMap(Collection::stream)
+                                    .collect(Collectors.toSet());
         return new CoeffectPath(expressionTree, carried, enclosingOfTree, visitorState);
     }
 
@@ -72,17 +74,18 @@ public record CoeffectPath(
         return result;
     }
 
-    public static Type getCoeffectClause(TreePath path) {
-        for (; path != null; path = path.getParentPath()) {
+    public static Set<Type> getCoeffectClause(TreePath path) {
+        var result = new HashSet<Type>();
+        for (; !(path.getLeaf() instanceof JCTree.JCMethodDecl); path = path.getParentPath()) {
             if (path.getLeaf() instanceof JCTree.JCMethodInvocation inv
                     && inv.getMethodSelect() instanceof JCTree.JCFieldAccess access
                     && access.selected.type.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())
                     && (access.name.contentEquals("call") || access.name.contentEquals("run"))) {
-                return access.selected.type;
+                result.add(access.selected.type);
             }
         }
 
-        return null;
+        return result;
     }
 
     /**
