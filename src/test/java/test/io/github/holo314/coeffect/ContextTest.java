@@ -47,6 +47,12 @@ public class ContextTest {
                                      .append("\t")
                                      .append("Add the requirements to the context or wrap it with run/call:")
                                      .append(System.lineSeparator())
+                                     .append("""
+                                             \t\t@WithContext({java.lang.CharSequence, test.io.github.holo314.coeffect.testdata.Test0, java.lang.String, ...}
+                                             \t\tpublic void qux() {...}
+                                             """)
+                                     .append("---")
+                                     .append(System.lineSeparator())
                                      .append("\t\t");
 
                              var with = new StringBuilder().append("Coeffect");

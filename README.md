@@ -475,6 +475,11 @@ To run the plugin you need to add the following section to your `maven-compiler-
             <artifactId>Coeffect</artifactId>
             <version>{coeffect.version}</version>
         </path>
+        <path>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_core</artifactId>
+            <version>${errorprone.version}</version>
+        </path>
     </annotationProcessorPaths>
 </configuration>
 ```

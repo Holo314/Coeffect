@@ -1,7 +1,6 @@
 package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.auto.service.AutoService;
-import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.errorprone.BugPattern;
@@ -15,7 +14,6 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -54,10 +52,10 @@ public class CoeffectPlugin
         try {
             var requirements = path.getRequirements();
             if (!requirements.isEmpty()) {
-                return describeContextViolation(path.expressionTree(), requirements);
+                return describeContextViolation(path, requirements);
             }
         } catch (IllegalStateException e) {
-            return describeLiteralViolation(path.expressionTree(), e.getMessage());
+            return describeLiteralViolation(path, e.getMessage());
         }
 
         return Description.NO_MATCH;
@@ -81,18 +79,28 @@ public class CoeffectPlugin
                                    : describeInheritanceViolation(methodTree, covariant, specifiedRequirements);
     }
 
-    public Description describeLiteralViolation(Tree node, String msg) {
-        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg)
+    public Description describeLiteralViolation(CoeffectPath node, String msg) {
+        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg)
                           .build();
     }
 
-    public Description describeContextViolation(Tree node, Collection<String> missings) {
+    public Description describeContextViolation(CoeffectPath node, Collection<String> missings) {
         var msg = new StringBuilder()
                 .append("Missing requirements in @WithContext: ")
                 .append(Iterables.toString(missings))
                 .append(System.lineSeparator())
                 .append("\t")
                 .append("Add the requirements to the context or wrap it with run/call:")
+                .append(System.lineSeparator())
+                .append("\t\t")
+                .append(node.enclosingMethod()
+                            .toString()
+                            .replaceAll("(?s)\\{.*}", "{...}")
+                            .replaceAll("@WithContext(.*)", "@WithContext({" + Iterables.toString(missings)
+                                                                                        .replaceAll("[\\[\\]]", "") + ", ...}")
+                            .replace("\n", "\n\t\t"))
+                .append(System.lineSeparator())
+                .append("---")
                 .append(System.lineSeparator())
                 .append("\t\t");
 
@@ -117,7 +125,7 @@ public class CoeffectPlugin
            .append(System.lineSeparator())
            .append("\t\t")
            .append(call);
-        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg.toString())
+        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg.toString())
                           .build();
     }
 

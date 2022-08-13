@@ -23,6 +23,7 @@ public class Test {
         holo.run(this::foo);
     }
 
+    @WithContext(System.class)
     public void qux() {
         // BUG: Diagnostic matches: Context
         new Test1().foo('h');
