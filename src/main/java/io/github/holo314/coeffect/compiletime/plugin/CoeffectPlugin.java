@@ -15,6 +15,7 @@ import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,16 +86,17 @@ public class CoeffectPlugin
     }
 
     public Description describeContextViolation(CoeffectPath node, Collection<String> missings) {
-        var wither = "@WithContext({" + Iterables.toString(missings)
-                                                 .replaceAll("[\\[\\]]", "") + ", ...}"
-                + node.enclosingMethod()
-                      .toString()
+        var wither = "@WithContext({"
+                + Iterables.toString(missings.stream().sorted().toList()) // transform to sorted list for tests
+                           .replaceAll("[\\[\\]]", "")
+                + ", ...}"
+                + node.enclosingMethod().toString()
                       .replaceAll("(?s)\\{.*}", "{...}")
                       .replaceAll("@[a-zA-Z0-9_]*(\\([^)]*\\))?", "");
 
         var msg = new StringBuilder()
                 .append("Missing requirements in @WithContext: ")
-                .append(Iterables.toString(missings))
+                .append(Iterables.toString(missings.stream().sorted().toList())) // transform to sorted list for tests
                 .append(System.lineSeparator())
                 .append("\t")
                 .append("Add the requirements to the context or wrap it with run/call:")
@@ -107,7 +109,7 @@ public class CoeffectPlugin
                 .append("\t\t");
 
         var with = new StringBuilder().append("Coeffect");
-        missings.forEach(withCounter((i, missing) -> {
+        missings.stream().sorted().toList().forEach(withCounter((i, missing) -> {
             var typeSplit = missing.split("[.]");
             var type = typeSplit[typeSplit.length - 1];
             with.append(".with(")
@@ -134,20 +136,31 @@ public class CoeffectPlugin
     public Description describeInheritanceViolation(
             Tree node, List<InheritanceUtils.Contextual> covariantViolation, Set<String> specifiedRequirements
     ) {
-        var msgBuilder = new StringBuilder().append("Method requires ")
-                                            .append(Iterables.toString(specifiedRequirements))
-                                            .append(" but implements:");
-        covariantViolation.forEach(violation ->
+        var msgBuilder = new StringBuilder()
+                .append("Method requires ")
+                .append(Iterables.toString(specifiedRequirements.stream()
+                                                                .sorted()
+                                                                .toList())) // transform to sorted list for tests
+                .append(" but implements:");
+
+        covariantViolation.stream().sorted(Comparator.comparing(Record::toString))
+                          .forEach(violation ->
                                            msgBuilder.append(System.lineSeparator())
                                                      .append("\t")
                                                      .append(violation.candidate().clazz())
                                                      .append("#")
                                                      .append(violation.candidate().method())
                                                      .append(" which requires ")
-                                                     .append(Iterables.toString(violation.context()))
+                                                     .append(Iterables.toString(violation.context()
+                                                                                         .stream()
+                                                                                         .sorted()
+                                                                                         .toList())) // transform to sorted list for tests
                                                      .append(".")
                                                      .append(" Remove ")
-                                                     .append(Iterables.toString(Sets.difference(specifiedRequirements, violation.context())))
+                                                     .append(Iterables.toString(Sets.difference(specifiedRequirements, violation.context())
+                                                                                    .stream()
+                                                                                    .sorted()
+                                                                                    .toList())) // transform to sorted list for tests
                                                      .append(" from the current method context")
                                                      .append(" or add it to the context of")
                                                      .append(violation.candidate().clazz())
