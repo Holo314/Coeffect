@@ -24,6 +24,12 @@ public class ContextTest {
                                       .toArray(String[]::new)
                          )
                          .withClasspath(Coeffect.class, Coeffect.Carrier.class, WithContext.class)
+                         .expectErrorMessage("Inheritance", (error -> error.contentEquals("""
+                                                                                          [Coeffect] Method requires [java.lang.CharSequence, test.io.github.holo314.coeffect.testdata.Test0, java.lang.String] but implements:
+                                                                                                test.io.github.holo314.coeffect.testdata.Test0#foo(char) which requires [java.lang.CharSequence]. Remove [test.io.github.holo314.coeffect.testdata.Test0, java.lang.String] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test0#foo(char)
+                                                                                                test.io.github.holo314.coeffect.testdata.Test#foo(char) which requires []. Remove [java.lang.CharSequence, test.io.github.holo314.coeffect.testdata.Test0, java.lang.String] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test#foo(char)
+                                                                                              (see https://github.com/Holo314/coeffect)
+                                                                                          """)))
                          .doTest();
     }
 }

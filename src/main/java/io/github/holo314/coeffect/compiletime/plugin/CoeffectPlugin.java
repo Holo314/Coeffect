@@ -1,6 +1,8 @@
 package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.auto.service.AutoService;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import com.google.errorprone.BugPattern;
 import com.google.errorprone.VisitorState;
 import com.google.errorprone.bugpatterns.BugChecker;
@@ -8,9 +10,12 @@ import com.google.errorprone.matchers.Description;
 import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
-import com.sun.tools.javac.code.Symbol;
+import com.sun.source.tree.Tree;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
+
+import java.util.List;
+import java.util.Set;
 
 @AutoService(BugChecker.class)
 @BugPattern(
@@ -54,25 +59,50 @@ public class CoeffectPlugin
 
     @Override
     public Description matchMethod(MethodTree methodTree, VisitorState visitorState) {
-        var types = Types.instance(visitorState.context);
-
         var jcMethod = (JCTree.JCMethodDecl)methodTree;
         var methodSymbol = jcMethod.sym;
 
         var specifiedRequirements = CoeffectPath.getContextOfSymbol(methodSymbol);
 
-        var classSymbol = (Symbol.ClassSymbol)methodSymbol.owner;
+        var superMethods = InheritanceUtils.getSuperMethods(methodSymbol, Types.instance(visitorState.context));
+        var requiredBySupers = superMethods.map(InheritanceUtils.Candidate::getContext);
 
-        var superClasses = InheritanceUtils.getInheritanceFlatten(classSymbol);
-        var superMethods = superClasses.stream()
-                                       .map(clazz -> InheritanceUtils.Candidates.of(clazz, jcMethod.name))
-                                       .flatMap(InheritanceUtils.Candidates::split)
-                                       .filter(candidate -> methodSymbol.overrides(candidate.method(), candidate.clazz(), types, true, false))
-                                       .map(InheritanceUtils.Candidate::method);
+        var covariant =
+                requiredBySupers.filter(requirement -> !requirement.context().containsAll(specifiedRequirements))
+                                .toList();
 
-        var requiredBySupers = superMethods.map(CoeffectPath::getContextOfSymbol);
-        var covariant = requiredBySupers.allMatch(requirement -> requirement.containsAll(specifiedRequirements));
+        return covariant.isEmpty() ? Description.NO_MATCH : describe(methodTree, covariant, specifiedRequirements);
+    }
 
-        return covariant ? Description.NO_MATCH : describeMatch(methodTree);
+
+    public Description describe(Tree node, String message) {
+        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), message).build();
+    }
+
+    public Description describe(
+            Tree node, List<InheritanceUtils.Contextual> covariantViolation, Set<String> specifiedRequirements
+    ) {
+        var msgBuilder = new StringBuilder().append("Method requires ")
+                                            .append(Iterables.toString(specifiedRequirements))
+                                            .append(" but implements:");
+        covariantViolation.forEach(violation ->
+                                           msgBuilder.append(System.lineSeparator())
+                                                     .append("\t")
+                                                     .append(violation.candidate().clazz())
+                                                     .append("#")
+                                                     .append(violation.candidate().method())
+                                                     .append(" which requires ")
+                                                     .append(Iterables.toString(violation.context()))
+                                                     .append(".")
+                                                     .append(" Remove ")
+                                                     .append(Iterables.toString(Sets.difference(specifiedRequirements, violation.context())))
+                                                     .append(" from the current method context")
+                                                     .append(" or add it to the context of")
+                                                     .append(violation.candidate().clazz())
+                                                     .append("#")
+                                                     .append(violation.candidate().method()));
+
+        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msgBuilder.toString())
+                          .build();
     }
 }

@@ -9,7 +9,7 @@ public class Test implements Serializable {
     @WithContext({java.lang.String.class})
     public void foo() {}
 
-    public void foo(int x) {}
+    public void foo(char x) {}
 
     @WithContext({Integer.class})
     public void bar() {
@@ -25,7 +25,7 @@ public class Test implements Serializable {
 }
 
 interface Test0 {
-    @WithContext(Test0.class)
+    @WithContext({CharSequence.class})
     void foo(char z);
 }
 
@@ -36,8 +36,9 @@ class Test1
     @Override
     public void foo() {}
 
-    @WithContext({Test0.class})
+    @WithContext({Test0.class, String.class, CharSequence.class})
     @Override
+    // BUG: Diagnostic matches: Inheritance
     public void foo(char z) {
 
     }

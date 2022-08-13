@@ -2,6 +2,7 @@ package io.github.holo314.coeffect.compiletime.plugin;
 
 import com.google.common.collect.Lists;
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.util.Name;
 
 import java.util.HashSet;
@@ -38,19 +39,33 @@ public class InheritanceUtils {
         acc.addAll(directInterfaces);
     }
 
+    public static Stream<Candidate> getSuperMethods(Symbol.MethodSymbol methodSymbol, Types types) {
 
+        var classSymbol = (Symbol.ClassSymbol)methodSymbol.owner;
+
+        var superClasses = InheritanceUtils.getInheritanceFlatten(classSymbol);
+        return superClasses.stream()
+                           .map(clazz -> InheritanceUtils.Candidates.of(clazz, methodSymbol.name))
+                           .flatMap(InheritanceUtils.Candidates::split)
+                           .filter(candidate -> methodSymbol.overrides(candidate.method(), candidate.clazz(), types, true, false));
+    }
 
     public record Candidates(Symbol.ClassSymbol clazz, List<Symbol> methods, Name name) {
         public static Candidates of(Symbol.ClassSymbol clazz, Name name) {
-            var candidates = clazz.members().getSymbolsByName(name,
-                                                              (s) -> s instanceof Symbol.MethodSymbol);
+            var candidates = clazz.members().getSymbolsByName(name, Symbol.MethodSymbol.class::isInstance);
             return new Candidates(clazz, Lists.newArrayList(candidates), name);
         }
 
         public Stream<Candidate> split() {
-            return methods.stream().map(method -> new Candidate(clazz, method, name));
+            return methods.stream().map(method -> new Candidate(clazz, (Symbol.MethodSymbol)method, name));
         }
     }
 
-    public record Candidate(Symbol.ClassSymbol clazz, Symbol method, Name name) {}
+    public record Candidate(Symbol.ClassSymbol clazz, Symbol.MethodSymbol method, Name name) {
+        public Contextual getContext() {
+            return new Contextual(this, CoeffectPath.getContextOfSymbol(method()));
+        }
+    }
+
+    public record Contextual(Candidate candidate, Set<String> context) {}
 }
