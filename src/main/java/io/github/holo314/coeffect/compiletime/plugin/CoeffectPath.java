@@ -88,18 +88,6 @@ public record CoeffectPath(
         return result;
     }
 
-    /**
-     * Implementation note:
-     * <p>
-     * It is currently impossible to detect "with" invocation through  variable, e.g.:
-     * <pre>
-     *     var x = Coeffect.with("^o^");
-     *     x.run(...); // the "String.class" binding is not detected
-     * </pre>
-     * <p>
-     * This is because with the current implementation of Coeffect.Carrier, the type of the binding is not encoded in the class.
-     * If in feature versions it will be encoded, then there won't be the need to traverse over "with", but over the generic type of "Coeffect.Carrier".
-     */
     public static void addWithes(JCTree.JCFieldAccess access, ArrayList<Type> acc) {
         if (access.selected instanceof JCTree.JCMethodInvocation innerInv // the "with" invocation
                 && innerInv.type.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())
