@@ -35,7 +35,55 @@ public class ContextTest {
                                                            test.io.github.holo314.coeffect.testdata.Test0#foo(char) which requires [java.lang.CharSequence]. Remove [java.lang.String, test.io.github.holo314.coeffect.testdata.Test0] from the current method context or add it to the context oftest.io.github.holo314.coeffect.testdata.Test0#foo(char)
                                                          (see https://github.com/Holo314/coeffect)
                                                      """.replaceAll("\\s", ""))))
-                         .expectErrorMessage("Context", (error -> {
+                        .expectErrorMessage("Context0", (error -> {
+                            var missings =
+                                    List.of(String.class.getCanonicalName());
+
+                            var wither = "@WithContext({" + Iterables.toString(missings.stream().sorted().toList()) // transform to sorted list for tests
+                                    .replaceAll("[\\[\\]]", "") + ", ...})"
+                                    + "public void qux() {...}";
+                            var expected = new StringBuilder()
+                                    .append("[Coeffect] Missing requirements in `foo()`: ")
+                                    .append(Iterables.toString(missings.stream().sorted().toList())) // transform to sorted list for tests
+                                    .append(System.lineSeparator())
+                                    .append("\t")
+                                    .append("Add the requirements to the context or wrap it with run/call:")
+                                    .append(System.lineSeparator())
+                                    .append("\t\t")
+                                    .append(wither.replace("\n", "\n\t\t"))
+                                    .append("---")
+                                    .append(System.lineSeparator())
+                                    .append("\t\t");
+
+                            var with = new StringBuilder().append("Coeffect");
+                            missings.stream().sorted().forEach(withCounter((i, missing) -> {
+                                var typeSplit = missing.split("[.]");
+                                var type = typeSplit[typeSplit.length - 1];
+                                with.append(".with(")
+                                        .append("v")
+                                        .append(type)
+                                        .append(i)
+                                        .append(")")
+                                        .append(System.lineSeparator())
+                                        .append("\t\t\t\t");
+                            }));
+                            var call = with + ".call(() -> ...);";
+                            var run = with + ".run(() -> ...);";
+
+                            expected.append(run)
+                                    .append(System.lineSeparator())
+                                    .append("---")
+                                    .append(System.lineSeparator())
+                                    .append("\t\t")
+                                    .append(call)
+                                    .append(System.lineSeparator())
+                                    .append("    (see https://github.com/Holo314/coeffect)");
+
+
+                            return error.replaceAll("\\s", "")
+                                    .contentEquals(expected.toString().replaceAll("\\s", ""));
+                        }))
+                        .expectErrorMessage("Context1", (error -> {
                              var missings =
                                      List.of(CharSequence.class.getCanonicalName(), "test.io.github.holo314.coeffect.testdata.Test0", String.class.getCanonicalName());
 
@@ -43,7 +91,7 @@ public class ContextTest {
                                                                       .replaceAll("[\\[\\]]", "") + ", ...})"
                                      + "public void qux() {...}";
                              var expected = new StringBuilder()
-                                     .append("[Coeffect] Missing requirements in @WithContext: ")
+                                     .append("[Coeffect] Missing requirements in `foo('h')`: ")
                                      .append(Iterables.toString(missings.stream().sorted().toList())) // transform to sorted list for tests
                                      .append(System.lineSeparator())
                                      .append("\t")

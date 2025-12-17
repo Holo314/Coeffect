@@ -94,8 +94,21 @@ public class CoeffectPlugin
                       .replaceAll("(?s)\\{.*}", "{...}")
                       .replaceAll("@[a-zA-Z0-9_]*(\\([^)]*\\))?", "");
 
+        var args = ((JCTree.JCMethodInvocation) node.expressionTree()).getArguments().map(JCTree::toString).toString(", ");
+        var callExpressionTree = (((JCTree.JCMethodInvocation) node.expressionTree()).getMethodSelect());
+        var callExpression = switch (callExpressionTree) {
+            case JCTree.JCFieldAccess tree -> tree.name.toString();
+            case JCTree.JCIdent tree -> tree.getName().toString();
+            default -> callExpressionTree.toString();
+        };
+
         var msg = new StringBuilder()
-                .append("Missing requirements in @WithContext: ")
+                .append("Missing requirements in `")
+                .append(callExpression)
+                .append("(")
+                .append(args)
+                .append(")")
+                .append("`: ")
                 .append(Iterables.toString(missings.stream().sorted().toList())) // transform to sorted list for tests
                 .append(System.lineSeparator())
                 .append("\t")

@@ -24,7 +24,9 @@ public class Test {
 
     @WithContext(System.class)
     public void qux() {
-        // BUG: Diagnostic matches: Context
+        // BUG: Diagnostic matches: Context0
+        foo();
+        // BUG: Diagnostic matches: Context1
         new Test1().foo('h');
     }
 }
