@@ -82,9 +82,7 @@ public final class Coeffect {
     }
 
     /**
-     * God bless generics type inference. We are using Java's Generics Type System to create compile time recursive data type.
-     * <p>
-     * The object {@link Carrier} contains the current instance of {@link ScopedValue.Carrier}. The type {@link Carrier}{@code <ValueType, Previous>} is a recursive data type that represent a linked list at compiletime with terminating value {@link Type.WildcardType}({@code ?}).
+     * The object {@link Carrier} contains the current instance of {@link ScopedValue.Carrier}. The type {@link Carrier}{@code <ValueType, Previous>} is a recursive data type that represent a linked list of the currently bounded types, it is created at compiletime with terminating value {@link Type.WildcardType}({@code ?}).
      * @param <ValueType> The type of the last value that got bind, or {@link Type.WildcardType}
      * @param <Previous> A type {@link Carrier} that represent the previews bind, or {@link Type.WildcardType}
      */
