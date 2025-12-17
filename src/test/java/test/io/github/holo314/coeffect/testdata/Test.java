@@ -29,6 +29,7 @@ public class Test {
     }
 }
 
+@SuppressWarnings("unused")
 interface Test0 {
     @WithContext({CharSequence.class})
     void foo(char z);
