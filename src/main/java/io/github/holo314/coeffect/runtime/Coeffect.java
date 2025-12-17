@@ -49,6 +49,7 @@ public final class Coeffect {
      *
      * @param classKey use to bypass type-erasure, equals to {@code Class&lt;StartType&gt;}
      */
+    @SuppressWarnings("unused")
     public <StartType> Carrier<StartType, Carrier<Void, Carrier<?, ?>>>
     bindNull(Class<StartType> classKey) {
         return baseCarrier.bindNull(classKey);

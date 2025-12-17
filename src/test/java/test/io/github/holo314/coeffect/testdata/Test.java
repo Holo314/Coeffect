@@ -3,6 +3,7 @@ package test.io.github.holo314.coeffect.testdata;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 
+@SuppressWarnings("unused")
 public class Test {
     @WithContext({java.lang.String.class,})
     public void foo() {}
