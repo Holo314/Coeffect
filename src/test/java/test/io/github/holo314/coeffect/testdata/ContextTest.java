@@ -4,50 +4,39 @@ import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 
 @SuppressWarnings("unused")
-public class Test {
-    @WithContext({java.lang.String.class,})
+public class ContextTest {
+    @WithContext({java.lang.String.class})
     public void foo() {}
 
+    @WithContext({String.class})
     public void foo(char x) {}
 
     @WithContext({Integer.class})
     public void bar() {
         var holo = Coeffect.with("Holo");
         holo.with("Myuri", CharSequence.class)
-            .run(() -> {
-                Coeffect.get(CharSequence.class);
-                foo();
-            });
+                .run(() -> {
+                    Coeffect.get(CharSequence.class);
+                    foo();
+                });
 
         holo.run(this::foo);
     }
 
-    @WithContext(System.class)
     public void qux() {
         // BUG: Diagnostic matches: Context0
         foo();
         // BUG: Diagnostic matches: Context1
-        new Test1().foo('h');
+        new ContextTest1().foo('h');
     }
 }
 
-@SuppressWarnings("unused")
-interface Test0 {
-    @WithContext({CharSequence.class})
-    void foo(char z);
-}
-
-class Test1
-        extends Test
-        implements Test0 {
+class ContextTest1 extends ContextTest {
     @WithContext(String.class)
     @Override
     public void foo() {}
 
-    @WithContext({Test0.class, String.class, CharSequence.class})
+    @WithContext({String.class})
     @Override
-    // BUG: Diagnostic matches: Inheritance
-    public void foo(char z) {
-
-    }
+    public void foo(char z) {}
 }

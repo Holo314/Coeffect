@@ -4,8 +4,8 @@ import com.google.common.collect.Sets;
 import com.google.errorprone.VisitorState;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.MethodInvocationTree;
-import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
+import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
@@ -45,10 +45,10 @@ public record CoeffectPath(
         return Sets.difference(required, bounds);
     }
 
-    public static CoeffectPath of(ExpressionTree expressionTree, VisitorState visitorState) {
+    public static CoeffectPath of(ExpressionTree expressionTree, VisitorState visitorState, JavacTrees javacTrees) {
         var invokedPath = visitorState.getPath();
         var binds = new ArrayList<Type>();
-        var enclosingOfTree = getEnclosingOfTree(invokedPath, binds);
+        var enclosingOfTree = getEnclosingOfTree(invokedPath, binds, javacTrees);
         var coeffectClause = getCoeffectClause(invokedPath);
         var carried = coeffectClause.stream().map(CoeffectPath::extractCarrierContext)
                                     .flatMap(Collection::stream)
@@ -100,9 +100,14 @@ public record CoeffectPath(
         }
     }
 
-    public static JCTree.JCMethodDecl getEnclosingOfTree(TreePath path, final ArrayList<Type> acc) {
-        Tree leaf;
-        while (!((leaf = path.getLeaf()) instanceof JCTree.JCMethodDecl)) {
+    public static JCTree.JCMethodDecl getEnclosingOfTree(TreePath path, final ArrayList<Type> acc, JavacTrees javacTrees) {
+        while (true) {
+            var leaf = path.getLeaf();
+            if (leaf instanceof JCTree.JCMethodDecl methodDecl) return methodDecl;
+            if (leaf instanceof JCTree.JCLambda lambdaDecl) {
+                return LambdaUtils.getMethodDefinitionFromLambda(lambdaDecl, javacTrees);
+            }
+
             if (leaf instanceof JCTree.JCMethodInvocation inv
                     && inv.getMethodSelect() instanceof JCTree.JCFieldAccess access) {
                 addWithes(access, acc);
@@ -113,7 +118,7 @@ public record CoeffectPath(
             }
         }
 
-        return (JCTree.JCMethodDecl)leaf;
+//        return (JCTree.JCMethodDecl)leaf;
     }
 
     public static Set<String> extractReferenceRequirements(JCTree.JCMemberReference referenceTree) {

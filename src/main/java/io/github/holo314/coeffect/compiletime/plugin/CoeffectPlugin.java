@@ -7,10 +7,8 @@ import com.google.errorprone.BugPattern;
 import com.google.errorprone.VisitorState;
 import com.google.errorprone.bugpatterns.BugChecker;
 import com.google.errorprone.matchers.Description;
-import com.sun.source.tree.MemberReferenceTree;
-import com.sun.source.tree.MethodInvocationTree;
-import com.sun.source.tree.MethodTree;
-import com.sun.source.tree.Tree;
+import com.sun.source.tree.*;
+import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 
@@ -35,17 +33,25 @@ import java.util.function.Consumer;
 )
 public class CoeffectPlugin
         extends BugChecker
-        implements BugChecker.MethodInvocationTreeMatcher, BugChecker.MemberReferenceTreeMatcher, BugChecker.MethodTreeMatcher {
+        implements BugChecker.MethodInvocationTreeMatcher, BugChecker.MemberReferenceTreeMatcher, BugChecker.MethodTreeMatcher, BugChecker.CompilationUnitTreeMatcher {
+
+    private JavacTrees javacTrees;
+
+    @Override
+    public Description matchCompilationUnit(CompilationUnitTree cu, VisitorState state) {
+        this.javacTrees = JavacTrees.instance(state.context);
+        return Description.NO_MATCH;
+    }
 
     @Override
     public Description matchMethodInvocation(MethodInvocationTree methodInv, VisitorState visitorState) {
-        var path = CoeffectPath.of(methodInv, visitorState);
+        var path = CoeffectPath.of(methodInv, visitorState, javacTrees);
         return checkTree(path);
     }
 
     @Override
     public Description matchMemberReference(MemberReferenceTree memberReferenceTree, VisitorState visitorState) {
-        var path = CoeffectPath.of(memberReferenceTree, visitorState);
+        var path = CoeffectPath.of(memberReferenceTree, visitorState, javacTrees);
         return checkTree(path);
     }
 
