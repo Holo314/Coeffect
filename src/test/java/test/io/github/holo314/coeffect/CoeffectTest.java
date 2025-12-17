@@ -1,19 +1,18 @@
 package test.io.github.holo314.coeffect;
 
-import jdk.incubator.concurrent.StructuredTaskScope;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.Duration;
 import java.util.NoSuchElementException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.StructuredTaskScope.Joiner;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("preview")
 public class CoeffectTest {
     @Test
     @WithContext(value = {String.class, CharSequence.class})
@@ -36,14 +35,14 @@ public class CoeffectTest {
     static private CharSequence scopeDelegation() {
         try {
             return Coeffect.with("Holo", CharSequence.class)
-                           .call(() -> {
-                               assertDoesNotThrow(() -> Coeffect.get(String.class));
-                               assertEquals("Lawrence", Coeffect.get(String.class));
+                    .call(() -> {
+                        assertDoesNotThrow(() -> Coeffect.get(String.class));
+                        assertEquals("Lawrence", Coeffect.get(String.class));
 
-                               assertDoesNotThrow(() -> Coeffect.get(CharSequence.class));
-                               assertEquals("Holo", Coeffect.get(CharSequence.class));
-                               return Coeffect.get(CharSequence.class);
-                           });
+                        assertDoesNotThrow(() -> Coeffect.get(CharSequence.class));
+                        assertEquals("Holo", Coeffect.get(CharSequence.class));
+                        return Coeffect.get(CharSequence.class);
+                    });
         } catch (Exception e) {
             fail(e);
             return null; // unreachable
@@ -54,53 +53,45 @@ public class CoeffectTest {
     public void multiThread() {
         // Flags to represent order, used to verify order between threads
         var orderTest = new AtomicIntegerArray(2);
-        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-            scope.fork(() -> {
-                Coeffect.with("Holo")
-                        .run(() -> {
-                            orderTest.set(0, 1);
-                            assertEquals(1, orderTest.get(0));
+        try (var scope = StructuredTaskScope.open(Joiner.awaitAllSuccessfulOrThrow(), cf -> cf.withTimeout(Duration.ofSeconds(2)))) {
+            scope.fork(() ->
+                    Coeffect.with("Holo")
+                            .run(() -> {
+                                orderTest.set(0, 1);
+                                assertEquals(1, orderTest.get(0));
 
-                            try (var iScope = new StructuredTaskScope.ShutdownOnFailure()) {
-                                iScope.fork(() -> {
-                                    // forking from an inner scope inherent all bindings
-                                    assertEquals("Holo", Coeffect.getOrNull(String.class));
-                                    return null;
-                                });
-                                iScope.join();
-                            } catch (InterruptedException e) {
-                                fail(e);
-                            }
+                                try (var iScope = StructuredTaskScope.open()) {
+                                    iScope.fork(() -> {
+                                        // forking from an inner scope inherent all bindings
+                                        assertEquals("Holo", Coeffect.getOrNull(String.class));
+                                        return null;
+                                    });
+                                    iScope.join();
+                                } catch (InterruptedException e) {
+                                    fail(e);
+                                }
 
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException e) {
-                                fail(e);
-                            }
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {
+                                    fail(e);
+                                }
 
-                            assertEquals(1, orderTest.get(1));
-                            assertEquals("Holo", Coeffect.getOrNull(String.class));
-                        });
-
-                return null;
-            });
-
+                                assertEquals(1, orderTest.get(1));
+                                assertEquals("Holo", Coeffect.getOrNull(String.class));
+                            }));
             scope.fork(() -> {
                 orderTest.set(1, 1);
                 assertEquals(1, orderTest.get(1));
-                Thread.sleep(500);
+                Thread.sleep(1500);
 
                 assertEquals(1, orderTest.get(0));
                 assertNull(Coeffect.getOrNull(String.class));
                 return null;
             });
-
-            scope.joinUntil(Instant.now().plus(2, ChronoUnit.SECONDS));
-            scope.throwIfFailed();
-        } catch (InterruptedException | ExecutionException e) {
+            scope.join();
+        } catch (InterruptedException e) {
             fail(e);
-        } catch (TimeoutException e) {
-            fail("Scope didn't end after 2s, should have ended after 1s", e);
         }
     }
 }

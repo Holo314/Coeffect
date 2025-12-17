@@ -10,9 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.github.holo314.coeffect.compiletime.plugin.CoeffectPlugin.withCounter;
 
@@ -42,7 +40,7 @@ public class ContextTest {
                                      List.of(CharSequence.class.getCanonicalName(), "test.io.github.holo314.coeffect.testdata.Test0", String.class.getCanonicalName());
 
                              var wither = "@WithContext({" + Iterables.toString(missings.stream().sorted().toList()) // transform to sorted list for tests
-                                                                      .replaceAll("[\\[\\]]", "") + ", ...}"
+                                                                      .replaceAll("[\\[\\]]", "") + ", ...})"
                                      + "public void qux() {...}";
                              var expected = new StringBuilder()
                                      .append("[Coeffect] Missing requirements in @WithContext: ")

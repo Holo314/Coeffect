@@ -81,7 +81,7 @@ public class CoeffectPlugin
     }
 
     public Description describeLiteralViolation(CoeffectPath node, String msg) {
-        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg)
+        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), msg)
                           .build();
     }
 
@@ -89,7 +89,7 @@ public class CoeffectPlugin
         var wither = "@WithContext({"
                 + Iterables.toString(missings.stream().sorted().toList()) // transform to sorted list for tests
                            .replaceAll("[\\[\\]]", "")
-                + ", ...}"
+                + ", ...})"
                 + node.enclosingMethod().toString()
                       .replaceAll("(?s)\\{.*}", "{...}")
                       .replaceAll("@[a-zA-Z0-9_]*(\\([^)]*\\))?", "");
@@ -129,7 +129,7 @@ public class CoeffectPlugin
            .append(System.lineSeparator())
            .append("\t\t")
            .append(call);
-        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msg.toString())
+        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), msg.toString())
                           .build();
     }
 
@@ -167,7 +167,7 @@ public class CoeffectPlugin
                                                      .append("#")
                                                      .append(violation.candidate().method()));
 
-        return Description.builder(node, this.canonicalName(), this.linkUrl(), this.defaultSeverity(), msgBuilder.toString())
+        return Description.builder(node, this.canonicalName(), this.linkUrl(), msgBuilder.toString())
                           .build();
     }
 

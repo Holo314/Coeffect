@@ -1,27 +1,25 @@
 package io.github.holo314.coeffect.runtime;
 
 import com.sun.tools.javac.code.Type;
-import jdk.incubator.concurrent.ExtentLocal;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
 /**
- * Coeffect has the same assumptions as ExtentLocal variables. <br>
+ * Coeffect has the same assumptions as ScopedValue variables. <br>
  * A thread that is open in coeffect scope must terminate before the coeffect scope ends, and vice versa. <br>
  * when this is assumption is violated the best case scenario is an exception, worst case scenario is that the stack of the Coeffect will be shifted, which can cause both logical errors and security problems.
  */
 public final class Coeffect {
-    private static final Map<Class<?>, ExtentLocal<Object>> COEFFECT = new HashMap<>();
+    private static final Map<Class<?>, ScopedValue<Object>> COEFFECT = new HashMap<>();
 
     static {
-        COEFFECT.put(void.class, ExtentLocal.newInstance());
+        COEFFECT.put(void.class, ScopedValue.newInstance());
     }
 
-    private static final ExtentLocal.Carrier baseExtentCarrier = ExtentLocal.where(COEFFECT.get(void.class), null);
+    private static final ScopedValue.Carrier baseExtentCarrier = ScopedValue.where(COEFFECT.get(void.class), null);
     private static final Carrier<Void, Carrier<?, ?>> baseCarrier = new Carrier<>(baseExtentCarrier);
 
     /**
@@ -85,15 +83,15 @@ public final class Coeffect {
     /**
      * God bless generics type inference. We are using Java's Generics Type System to create compile time recursive data type.
      * <p>
-     * The object {@link Carrier} contains the current instance of {@link ExtentLocal.Carrier}. The type {@link Carrier}{@code <ValueType, Previous>} is a recursive data type that represent a linked list at compiletime with terminating value {@link Type.WildcardType}({@code ?}).
+     * The object {@link Carrier} contains the current instance of {@link ScopedValue.Carrier}. The type {@link Carrier}{@code <ValueType, Previous>} is a recursive data type that represent a linked list at compiletime with terminating value {@link Type.WildcardType}({@code ?}).
      * @param <ValueType> The type of the last value that got bind, or {@link Type.WildcardType}
      * @param <Previous> A type {@link Carrier} that represent the previews bind, or {@link Type.WildcardType}
      */
     public static final class Carrier<ValueType, Previous extends Carrier<?, ?>> {
 
-        private final ExtentLocal.Carrier innerCarrier;
+        private final ScopedValue.Carrier innerCarrier;
 
-        private Carrier(ExtentLocal.Carrier innerCarrier) {
+        private Carrier(ScopedValue.Carrier innerCarrier) {
             this.innerCarrier = innerCarrier;
         }
 
@@ -144,14 +142,13 @@ public final class Coeffect {
             innerCarrier.run(op);
         }
 
-        public <R> R call(Callable<R> op)
-                throws Exception {
+        public <R, X extends Throwable> R call(ScopedValue.CallableOp<R, X> op) throws X {
             return innerCarrier.call(op);
         }
     }
 
     private static void createInstance(Class<?> classKey) {
-        COEFFECT.putIfAbsent(classKey, ExtentLocal.newInstance());
+        COEFFECT.putIfAbsent(classKey, ScopedValue.newInstance());
     }
 }
 

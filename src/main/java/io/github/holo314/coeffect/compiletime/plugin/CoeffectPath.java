@@ -13,7 +13,6 @@ import com.sun.tools.javac.tree.TreeInfo;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 
-import javax.annotation.Nullable;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.TypeMirror;
 import java.util.*;
@@ -26,14 +25,11 @@ public record CoeffectPath(
         VisitorState visitorState
 ) {
     public Collection<String> getRequirements() {
-        Set<String> required;
-        if (expressionTree instanceof MethodInvocationTree methodInv) {
-            required = extractMethodRequirements(methodInv);
-        } else if (expressionTree instanceof JCTree.JCMemberReference referenceTree) {
-            required = extractReferenceRequirements(referenceTree);
-        } else {
-            required = Set.of();
-        }
+        Set<String> required = switch (expressionTree) {
+            case MethodInvocationTree methodInv -> extractMethodRequirements(methodInv);
+            case JCTree.JCMemberReference referenceTree -> extractReferenceRequirements(referenceTree);
+            case null, default -> Set.of();
+        };
 
 
         var enclosingBinding = enclosingMethod == null ?
@@ -60,7 +56,7 @@ public record CoeffectPath(
         return new CoeffectPath(expressionTree, carried, enclosingOfTree, visitorState);
     }
 
-    public static Set<Type> extractCarrierContext(@Nullable Type carrier) {
+    public static Set<Type> extractCarrierContext(Type carrier) {
         if (carrier == null || !carrier.tsym.toString().equals(Coeffect.Carrier.class.getCanonicalName())) {
             return Set.of();
         }
@@ -95,9 +91,9 @@ public record CoeffectPath(
                 && innerAccess.name.contentEquals("with")) {
 
             if (innerInv.getArguments().size() == 1) {
-                acc.add(innerInv.getArguments().get(0).type);
+                acc.add(innerInv.getArguments().getFirst().type);
             } else {
-                acc.add(innerInv.getArguments().get(1).type.getTypeArguments().get(0));
+                acc.add(innerInv.getArguments().get(1).type.getTypeArguments().getFirst());
             }
 
             addWithes(innerAccess, acc);
@@ -152,7 +148,7 @@ public record CoeffectPath(
                 || !fieldAccess.name.contentEquals("get")) {
             return Set.of();
         }
-        var argument = methodInv.getArguments().get(0);
+        var argument = methodInv.getArguments().getFirst();
         if (!(argument instanceof JCTree.JCFieldAccess classAccess)) {
             return null;
         }
@@ -161,7 +157,7 @@ public record CoeffectPath(
         if (!argumentSymbol.toString().equals(Class.class.getCanonicalName())) {
             return null;
         }
-        var argumentDiamondType = argumentType.getTypeArguments().get(0);
+        var argumentDiamondType = argumentType.getTypeArguments().getFirst();
 
         if (!(argumentDiamondType instanceof Type.ClassType)
                 && !(argumentDiamondType instanceof Type.ArrayType)) {
