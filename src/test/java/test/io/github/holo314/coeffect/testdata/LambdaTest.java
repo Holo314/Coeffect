@@ -18,7 +18,7 @@ public class LambdaTest {
 
 @FunctionalInterface
 interface FuncWithIntegerContext<T, R> {
-    @WithContext(String.class)
+    @WithContext(Integer.class)
     R apply(T t);
     default void holo() {
 
