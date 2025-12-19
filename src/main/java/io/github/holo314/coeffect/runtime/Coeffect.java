@@ -1,7 +1,7 @@
 package io.github.holo314.coeffect.runtime;
 
 import com.sun.tools.javac.code.Type;
-import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
+import io.github.holo314.coeffect.compiletime.annotations.DelegateContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -113,12 +113,12 @@ public final class Coeffect {
             return new Carrier<>(innerCarrier.where(COEFFECT.get(classKey), value));
         }
 
-        @UseInplace
+        @DelegateContext
         public void run(Runnable op) {
             innerCarrier.run(op);
         }
 
-        @UseInplace
+        @DelegateContext
         public <R, X extends Throwable> R call(ScopedValue.CallableOp<R, X> op) throws X {
             return innerCarrier.call(op);
         }

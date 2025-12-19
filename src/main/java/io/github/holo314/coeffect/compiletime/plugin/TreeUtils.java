@@ -1,9 +1,8 @@
 package io.github.holo314.coeffect.compiletime.plugin;
 
-import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.JCTree;
-import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
+import io.github.holo314.coeffect.compiletime.annotations.DelegateContext;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -24,8 +23,8 @@ public class TreeUtils {
     }
 
     public static boolean lambdaRunsInEnclosingMethod(JCTree.JCLambda lambdaDecl, JCTree.JCMethodInvocation inv, Symbol.MethodSymbol methodSymbol) {
-        var pPositions = Arrays.stream(methodSymbol.getAnnotation(UseInplace.class).varPositions()).boxed().collect(Collectors.toSet());
-        var pNames = Arrays.stream(methodSymbol.getAnnotation(UseInplace.class).varNames()).collect(Collectors.toSet());
+        var pPositions = Arrays.stream(methodSymbol.getAnnotation(DelegateContext.class).variablePositions()).boxed().collect(Collectors.toSet());
+        var pNames = Arrays.stream(methodSymbol.getAnnotation(DelegateContext.class).variableNames()).collect(Collectors.toSet());
         if (!pNames.isEmpty() || !pPositions.isEmpty()) {
             var paramsExpr = inv.args;
             var paramsDef = methodSymbol.getParameters();

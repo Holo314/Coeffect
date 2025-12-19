@@ -9,7 +9,7 @@ import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeInfo;
-import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
+import io.github.holo314.coeffect.compiletime.annotations.DelegateContext;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 
@@ -97,7 +97,7 @@ public record CoeffectPath(
                 if (path.getParentPath().getLeaf() instanceof JCTree.JCMethodInvocation methodInvocation &&
                         methodInvocation.getMethodSelect() instanceof JCTree.JCFieldAccess fieldAccess &&
                         fieldAccess.sym instanceof Symbol.MethodSymbol methodSymbol &&
-                        methodSymbol.getAnnotation(UseInplace.class) != null &&
+                        methodSymbol.getAnnotation(DelegateContext.class) != null &&
                         TreeUtils.lambdaRunsInEnclosingMethod(lambdaDecl, methodInvocation, methodSymbol)) {
                     yield getEnclosingBounds(path.getParentPath());
                 }

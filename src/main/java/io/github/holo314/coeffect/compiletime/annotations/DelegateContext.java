@@ -47,14 +47,14 @@ import java.lang.annotation.Target;
  *     }
  * </pre>
  * <p>
- * In case the method receive several lambdas you can specify to which of the parameters to apply the annotation either positionally via {@code varPositions} or using the name of the parameters via {@code varNames}, by default the annotation will apply to all parameters.
+ * In case the method receive several lambdas you can specify to which of the parameters to apply the annotation either positionally via {@code variablePositions} or using the name of the parameters via {@code variableNames}, by default the annotation will apply to all parameters.
  * <p>
  * WARNING: The annotation enables a backdoor, if your method is annotated with this annotation and inside your method you save the lambda (e.g. in a field) then nothing stops you to use the lambda later in an illegal situation.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-public @interface UseInplace {
-    int[] varPositions() default {};
+public @interface DelegateContext {
+    int[] variablePositions() default {};
 
-    String[] varNames() default {};
+    String[] variableNames() default {};
 }

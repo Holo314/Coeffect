@@ -3,7 +3,7 @@ package test.io.github.holo314.coeffect;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.errorprone.CompilationTestHelper;
-import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
+import io.github.holo314.coeffect.compiletime.annotations.DelegateContext;
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.compiletime.plugin.CoeffectPlugin;
 import io.github.holo314.coeffect.runtime.Coeffect;
@@ -56,7 +56,7 @@ public class CompiletimeContextTest {
                         Files.readAllLines(Path.of("src/test/java/" + source0))
                                 .toArray(String[]::new)
                 )
-                .withClasspath(Coeffect.class, Coeffect.Carrier.class, WithContext.class, UseInplace.class)
+                .withClasspath(Coeffect.class, Coeffect.Carrier.class, WithContext.class, DelegateContext.class)
                 .expectErrorMessage("Context0", (error -> {
                     var callExpression = "foo";
                     var args = String.join(", ", List.of());

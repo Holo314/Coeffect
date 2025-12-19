@@ -89,7 +89,7 @@ The solution this library offers is to create a (partial) [Coeffect System](http
 The idea is to use `ScopedValue` to create an implicit context behind every function call and use a compiler plugin to add type safety.
 
 > `Implementation note:` It is impossible to create this system with `ThreadLocal` because there is no control over the
-call of `ThreadLocal#remove`.
+> call of `ThreadLocal#remove`.
 
 Before diving into the details, let's see how the above example will look like:
 
@@ -335,18 +335,14 @@ void qux() {
 }
 ```
 
-## Lambda's problem
+## Lambdas
 
-Currently, annotation's parameters must be known at compiletime, that means that _there is no way to allow generics on
-the annotation level_.
-
-Why is this problematic? Consider:
-
+Lambdas by default works like checked exceptions with lambdas. Consider the following situation
 ```java
 static class IntTransformer {
     ArrayList<Function<Integer, Integer>> transformers = new ArrayList<>();
 
-    public void transform(Function<Integer, Integer> transform) {
+    public void addTransformer(Function<Integer, Integer> transform) {
         transformers.add(transform);
     }
 
@@ -359,96 +355,169 @@ static class IntTransformer {
 }
 ```
 
-Now we want to use it with combination of `Coeffect`:
+If we want to use it with combination of `Coeffect`:
 
 ```java
 import io.github.holo314.coeffect.runtime.Coeffect;
 
 void main() {
     var x = new IntTransformer();
-    x.transform(r -> {
-        var z = Coeffect.get(Integer.class); // ?????
+    x.addTransformer(r -> {
+        var z = Coeffect.get(Integer.class); // !!
         return r + z;
     });
+    x.run();
 }
 ```
 
-We cannot dynamically bind objects to an effect, with generics we would "collect the effects" to the instance
-of `IntTransformer` and "discharge" it on "run".
+We get a compile time exception because the lambda expression has type `Function<>`, but the abstract method of `Function<>`, `Runnable<>#apply`, does not declare `@WithContext(Integer.class)`.
 
-Because of that **the current implementation requires adding a context to the method that defines the lambda**, which is unfortunate.
+But if we create
 
+```java
+@FunctionalInterface
+interface FuncWithIntegerContext<T, R> {
+    @WithContext(Integer.class)
+    R apply(T t);
+    
+    // Default methods omitted for brevity
+}
+```
 
-I am open for suggestions for better solutions.
+And use `FuncWithIntegerContext<>` instead of `Function<>` in `IntTransformer`:
 
----
+```java
+import io.github.holo314.coeffect.runtime.Coeffect;
 
-# Future Work and Extra notes
+static class IntTransformer {
+    ArrayList<FuncWithIntegerContext<Integer, Integer>> transformers = new ArrayList<>();
 
-First of all, I wish to align the Coeffect usage in lambda expressions with checked-exceptions, that means that to enable using Coeffects in lambdas one would need to have the `@WithContext` annotation present in the definition of the SAM the lambda is using, so the above example could work as follows:
+    public void addTransformer(FuncWithIntegerContext<Integer, Integer> transform) {
+        transformers.add(transform);
+    }
+
+    public int run(int i) {
+        for (var t : transformers) {
+            i = t.apply(i); // !!
+        }
+        return i;
+    }
+}
+
+void main() {
+    var x = new IntTransformer();
+    x.addTransformer(r -> {
+        var z = Coeffect.get(Integer.class); // OK
+        return r + z;
+    });
+    x.run();
+}
+```
+The compiler now will complain on `IntTranformer#run` because it uses `FuncWithIntegerContext<>#apply` without the necessary context, so we need to now add `@WithContext(Integer.class)` to that method:
 
 ```java
 import io.github.holo314.coeffect.compiletime.annotations.WithContext;
 import io.github.holo314.coeffect.runtime.Coeffect;
 
-void main() {
-    var x = new IntTransformer();
-    // no problem here, IntTransformer#transform doesn't use any method that requires context
-    x.transform(r -> {
-        var z = Coeffect.get(Integer.class);
-        return r + z;
-    });
-
-    // x.run(7); // illegal, x#run is annotated with @WithContext(Integer.class)
-    var result = Coeffect.with(2).call(() -> x.run(7));
-}
-
-@FunctionalInterface
-interface FuncWithIntegerContext<T, R> {
-    @WithContext(Integer.class)
-    R apply(T t);
-}
-
 static class IntTransformer {
     ArrayList<FuncWithIntegerContext<Integer, Integer>> transformers = new ArrayList<>();
 
-    public void transform(FuncWithIntegerContext<Integer, Integer> transform) {
+    public void addTransformer(FuncWithIntegerContext<Integer, Integer> transform) {
         transformers.add(transform);
     }
 
-    // we are using FuncWithIntegerContext#apply, which is annotated with @WithContext(Integer.class), 
-    // so we need to either annotated this method as well, or bind an integer before
-    // the usage of FuncWithIntegerContext#apply
     @WithContext(Integer.class)
     public int run(int i) {
         for (var t : transformers) {
-            i = t.apply(i);
+            i = t.apply(i); // OK
         }
         return i;
-
-        // also works:
-        // Coeffect.with(3)
-        //         .call(() -> {
-        //             var result = i;
-        //             for (var t : transformers) {
-        //                 result = t.apply(result);
-        //             }
-        //             return result; 
-        //         });
-
-        // also works:
-        // for (var t : transformers) {
-        //     var temp = i;
-        //     i = Coeffect.with(5).call(() -> t.apply(temp));
-        // }
-        // return i;
     }
+}
+
+void main() {
+    var x = new IntTransformer();
+    x.addTransformer(r -> {
+        var z = Coeffect.get(Integer.class); // OK
+        return r + z;
+    });
+    x.run(); // !!
 }
 ```
 
-I am also thinking about _named coeffects_ of some sort, but I do not know how to implement them in a satisfactory way currently.
+And finally the compiler will complain about our `x.run()` line because `IntTransformer#run` has `Integer.class` in the context.
 
-### Effects
+### Bypassing the plugin
+
+In some cases you have a method `myFunc(Function<> f)` which I know does not store `f` anywhere, but `myFunc` uses `f` inside of it. In that case you can tell the plugin to treat context that `f` uses as context that `myFunc` uses instead.
+
+**WARNING:** the following feature can be used to bypass the compiler plugin type checking and cause illegal accesses to `ScopedValue`s, leakage, and even security breach. Only use it if you are completely sure that the lambda parameter is not accessible from anywhere outside of that specific method.
+
+Consider the following scenario:
+```java
+void retry(Runnable func, RetryConfig config) {
+    // implement retry logic
+}
+```
+
+You want to be able to use the `retry` method for all sort of functions, and you want the `retry` method to be reusable and not coupled to any context.
+
+As explained in the first part of the Lambda section, the following will fail:
+
+```java
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+void main() {
+    Coeffect.with(7).run(() -> 
+            retry(() -> Coeffect.get(Integer.class), new RetryConfig()));
+}
+```
+
+Because when the compiler sees the `Coeffect.get(Integer.class)` it sees that it is inside a lambda, so it checks what interface the lambda implements, in this case `Runnable`, find the Abstract Method of the interface, in this case `Runnable#run`, and checks the `@WithContext` of that method.
+
+To fix this, we can annotate our `retry` annotation with `@UseInplace`
+
+```java
+import io.github.holo314.coeffect.compiletime.annotations.DelegateContext;
+import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+@DelegateContext
+void retry(Runnable func, RetryConfig config) {
+    // implement retry logic
+}
+
+void main() {
+    Coeffect.with(7).run(() ->
+            retry(() -> Coeffect.get(Integer.class), new RetryConfig()));
+}
+```
+
+This will now compile. Because the method is annotated with `@DelegateContext`, when you pass a lambda expression into it as a parameter, the compiler assumes that the lambda expression will run inside the method (the compiler also assumes that the lambda won't outside of that method **but it cannot check this**, it trust the programmer to not leak the lambda from inside the method).
+
+The annotation also allows you to specify which of the arguments of the method should be delegated, either using the variable name, or the variable position:
+
+```java
+import io.github.holo314.coeffect.compiletime.annotations.DelegateContext;
+import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
+import io.github.holo314.coeffect.runtime.Coeffect;
+
+@DelegateContext(variableNames = {"func"})
+// @DelegateContext(variablePositions = {0})
+void retry(Runnable func, Function<RetryConfig, RetryConfig> configProvider) {
+    // implement retry logic
+}
+
+void main() {
+    Coeffect.with(7).run(() ->
+            retry(() -> Coeffect.get(Integer.class), conf -> conf));
+}
+```
+
+---
+
+
+## Effects
 
 The name `Coeffect` comes, unsurprisingly, from [`Effect` system](https://en.wikipedia.org/wiki/Effect_system).
 
