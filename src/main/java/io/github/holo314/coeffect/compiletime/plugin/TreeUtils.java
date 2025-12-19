@@ -9,11 +9,6 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public class TreeUtils {
-    public static JCTree.JCMethodDecl getMethodSymbolFromLambda(JCTree.JCLambda lambdaDecl, JavacTrees javacTrees) {
-        var methodSymbol = getAbstractMethodFromSAMInterface(lambdaDecl);
-        return javacTrees.getTree(methodSymbol);
-    }
-
     public static Symbol.TypeSymbol getSymbolOfLambdaType(JCTree.JCLambda lambdaDecl) {
         return lambdaDecl.type.asElement();
     }

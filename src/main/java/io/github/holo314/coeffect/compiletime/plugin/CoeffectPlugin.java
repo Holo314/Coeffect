@@ -8,7 +8,6 @@ import com.google.errorprone.VisitorState;
 import com.google.errorprone.bugpatterns.BugChecker;
 import com.google.errorprone.matchers.Description;
 import com.sun.source.tree.*;
-import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 
@@ -16,9 +15,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 @AutoService(BugChecker.class)
 @BugPattern(
@@ -153,10 +149,5 @@ public class CoeffectPlugin
 
         return Description.builder(node, this.canonicalName(), this.linkUrl(), msgBuilder.toString())
                           .build();
-    }
-
-    public static <T> Consumer<T> withCounter(BiConsumer<Integer, T> consumer) {
-        AtomicInteger counter = new AtomicInteger(0);
-        return item -> consumer.accept(counter.getAndIncrement(), item);
     }
 }
