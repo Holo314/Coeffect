@@ -20,9 +20,7 @@ public class LambdaTest {
 interface FuncWithIntegerContext<T, R> {
     @WithContext(Integer.class)
     R apply(T t);
-    default void holo() {
-
-    }
+    default void holo() {}
 }
 
 class IntTransformer {

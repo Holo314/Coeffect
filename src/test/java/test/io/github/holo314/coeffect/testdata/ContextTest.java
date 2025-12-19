@@ -27,7 +27,7 @@ public class ContextTest {
         // BUG: Diagnostic matches: Context0
         foo();
         // BUG: Diagnostic matches: Context1
-        new ContextTest1().foo('h');
+        Coeffect.with(57).run(() -> new ContextTest1().foo('h'));
     }
 }
 

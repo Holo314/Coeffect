@@ -1,6 +1,7 @@
 package io.github.holo314.coeffect.runtime;
 
 import com.sun.tools.javac.code.Type;
+import io.github.holo314.coeffect.compiletime.annotations.UseInplace;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,19 +43,6 @@ public final class Coeffect {
     with(StartType value, Class<? extends StartType> classKey) {
         return baseCarrier.with(value, classKey);
     }
-
-    /**
-     * Create new binding for {@code classKey} with value {@code null}
-     * Because of type erasure, we cannot use generic-with method to set values to null
-     *
-     * @param classKey use to bypass type-erasure, equals to {@code Class&lt;StartType&gt;}
-     */
-    @SuppressWarnings("unused")
-    public <StartType> Carrier<StartType, Carrier<Void, Carrier<?, ?>>>
-    bindNull(Class<StartType> classKey) {
-        return baseCarrier.bindNull(classKey);
-    }
-
 
     @SuppressWarnings({"unchecked"})
     public static <T> T get(Class<T> c)
@@ -125,22 +113,12 @@ public final class Coeffect {
             return new Carrier<>(innerCarrier.where(COEFFECT.get(classKey), value));
         }
 
-        /**
-         * Create new binding for {@code classKey} with value {@code null}
-         * Because of type erasure, we cannot use generic-with method to set values to null
-         *
-         * @param classKey use to bypass type-erasure, equals to {@code Class&lt;T&gt;}
-         */
-        public <NextType> Carrier<NextType, Carrier<ValueType, Previous>>
-        bindNull(Class<NextType> classKey) {
-            createInstance(classKey);
-            return new Carrier<>(innerCarrier.where(COEFFECT.get(classKey), null));
-        }
-
+        @UseInplace
         public void run(Runnable op) {
             innerCarrier.run(op);
         }
 
+        @UseInplace
         public <R, X extends Throwable> R call(ScopedValue.CallableOp<R, X> op) throws X {
             return innerCarrier.call(op);
         }

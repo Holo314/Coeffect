@@ -33,31 +33,23 @@ import java.util.function.Consumer;
 )
 public class CoeffectPlugin
         extends BugChecker
-        implements BugChecker.MethodInvocationTreeMatcher, BugChecker.MemberReferenceTreeMatcher, BugChecker.MethodTreeMatcher, BugChecker.CompilationUnitTreeMatcher {
-
-    private JavacTrees javacTrees;
-
-    @Override
-    public Description matchCompilationUnit(CompilationUnitTree cu, VisitorState state) {
-        this.javacTrees = JavacTrees.instance(state.context);
-        return Description.NO_MATCH;
-    }
+        implements BugChecker.MethodInvocationTreeMatcher, BugChecker.MemberReferenceTreeMatcher, BugChecker.MethodTreeMatcher {
 
     @Override
     public Description matchMethodInvocation(MethodInvocationTree methodInv, VisitorState visitorState) {
-        var path = CoeffectPath.of(methodInv, visitorState, javacTrees);
+        var path = CoeffectPath.of(methodInv, visitorState);
         return checkTree(path);
     }
 
     @Override
     public Description matchMemberReference(MemberReferenceTree memberReferenceTree, VisitorState visitorState) {
-        var path = CoeffectPath.of(memberReferenceTree, visitorState, javacTrees);
+        var path = CoeffectPath.of(memberReferenceTree, visitorState);
         return checkTree(path);
     }
 
     private Description checkTree(CoeffectPath path) {
         try {
-            var requirements = path.getRequirements();
+            var requirements = path.getMissingRequirements();
             if (!requirements.isEmpty()) {
                 return describeContextViolation(path, requirements);
             }
@@ -92,15 +84,11 @@ public class CoeffectPlugin
     }
 
     public Description describeContextViolation(CoeffectPath node, Collection<String> missings) {
-        var wither = "@WithContext({"
-                + Iterables.toString(missings.stream().sorted().toList()) // transform to sorted list for tests
-                           .replaceAll("[\\[\\]]", "")
-                + ", ...})"
-                + node.enclosingMethod().toString()
-                      .replaceAll("(?s)\\{.*}", "{...}")
-                      .replaceAll("@[a-zA-Z0-9_]*(\\([^)]*\\))?", "");
+        var args = ((JCTree.JCMethodInvocation) node.expressionTree())
+                .getArguments()
+                .map(JCTree::toString)
+                .toString(", ");
 
-        var args = ((JCTree.JCMethodInvocation) node.expressionTree()).getArguments().map(JCTree::toString).toString(", ");
         var callExpressionTree = (((JCTree.JCMethodInvocation) node.expressionTree()).getMethodSelect());
         var callExpression = switch (callExpressionTree) {
             case JCTree.JCFieldAccess tree -> tree.name.toString();
@@ -108,47 +96,24 @@ public class CoeffectPlugin
             default -> callExpressionTree.toString();
         };
 
+        //noinspection StringBufferReplaceableByString
         var msg = new StringBuilder()
                 .append("Missing requirements in `")
                 .append(callExpression)
                 .append("(")
                 .append(args)
-                .append(")")
-                .append("`: ")
-                .append(Iterables.toString(missings.stream().sorted().toList())) // transform to sorted list for tests
-                .append(System.lineSeparator())
-                .append("\t")
-                .append("Add the requirements to the context or wrap it with run/call:")
-                .append(System.lineSeparator())
-                .append("\t\t")
-                .append(wither.replace("\n", "\n\t\t"))
-                .append(System.lineSeparator())
-                .append("---")
-                .append(System.lineSeparator())
-                .append("\t\t");
+                .append(")`. Required types for the call: ")
+                .append(Iterables.toString(node.requirements().stream().sorted().toList())) // all sets are sorted for consistent tests
+                .append(", bounded types: ")
+                .append(Iterables.toString(node.explicitlyBounded().stream().sorted().toList()))
+                .append(", context types: ")
+                .append(Iterables.toString(node.enclosingBounds().stream().sorted().toList()))
+                .append(", missing types: ")
+                .append(Iterables.toString(missings.stream().sorted().toList()))
+                .append(". Either bind the missing types with Coeffect#with method before call the method or add the missing types to the context of the current method via @WithContext annotation.")
+                .toString();
 
-        var with = new StringBuilder().append("Coeffect");
-        missings.stream().sorted().toList().forEach(withCounter((i, missing) -> {
-            var typeSplit = missing.split("[.]");
-            var type = typeSplit[typeSplit.length - 1];
-            with.append(".with(")
-                .append("v")
-                .append(type)
-                .append(i)
-                .append(")")
-                .append(System.lineSeparator())
-                .append("\t\t\t\t");
-        }));
-        var call = with + ".call(() -> ...);";
-        var run = with + ".run(() -> ...);";
-
-        msg.append(run)
-           .append(System.lineSeparator())
-           .append("---")
-           .append(System.lineSeparator())
-           .append("\t\t")
-           .append(call);
-        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), msg.toString())
+        return Description.builder(node.expressionTree(), this.canonicalName(), this.linkUrl(), msg)
                           .build();
     }
 
