@@ -619,8 +619,8 @@ repositories {
 
 dependencies {
     errorprone("com.google.errorprone:error_prone_core:2.45.0")
-    errorprone("io.github.holo314:Coeffect:1.2.0")
-    implementation("io.github.holo314:Coeffect:1.2.0")
+    errorprone("io.github.holo314:Coeffect:<coeffect.version>")
+    implementation("io.github.holo314:Coeffect:<coeffect.version>")
 }
 
 tasks.withType<JavaCompile>().configureEach {
